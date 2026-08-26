@@ -1,12 +1,10 @@
-window.onload = function () {
+window.onload = async function () {
     // Initialize focusable elements
-    const focusableElements = document.querySelectorAll('.focusable');
+    let focusableElements = document.querySelectorAll('.focusable');
     let currentIndex = 0;
 
-    // Set initial focus
-    if (focusableElements.length > 0) {
-        setFocus(currentIndex);
-    }
+    // Fetch real data
+    await loadData();
 
     // Tizen TV Key Codes
     const tvKey = {
@@ -31,6 +29,65 @@ window.onload = function () {
         }
     }
 
+    // Re-query focusable elements when DOM changes
+    function updateFocusableElements() {
+        focusableElements = document.querySelectorAll('.focusable');
+    }
+
+    // Load data from AnimeFLV and populate UI
+    async function loadData() {
+        try {
+            document.getElementById('carousel-trending').innerHTML = 'Cargando...';
+            document.getElementById('carousel-popular').innerHTML = 'Cargando...';
+
+            const trending = await AnimeFLV.getTrendingShows();
+            const latest = await AnimeFLV.getLatestEpisodes();
+
+            renderCarousel('carousel-trending', trending.slice(0, 5));
+            renderCarousel('carousel-popular', latest.slice(0, 5));
+
+            // Setup focus again now that items exist
+            updateFocusableElements();
+
+            // Focus first item in menu by default if not set
+            if (focusableElements.length > 0) {
+                setFocus(currentIndex);
+            }
+
+        } catch (e) {
+            console.error("Error loading data:", e);
+            document.getElementById('carousel-trending').innerHTML = 'Error loading (CORS?)';
+            document.getElementById('carousel-popular').innerHTML = 'Error loading (CORS?)';
+        }
+    }
+
+    function renderCarousel(containerId, items) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = ''; // Clear
+
+        if (items.length === 0) {
+            container.innerHTML = 'No data available';
+            return;
+        }
+
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'item focusable';
+            div.setAttribute('data-id', item.id);
+            div.setAttribute('title', item.title); // For tooltip/accessibility
+
+            if (item.poster) {
+                div.style.backgroundImage = `url('${item.poster}')`;
+                div.style.backgroundSize = 'cover';
+                div.style.backgroundPosition = 'center';
+            } else {
+                div.innerHTML = `<div class="placeholder-poster">${item.title}</div>`;
+            }
+
+            container.appendChild(div);
+        });
+    }
+
     // Simplified spatial navigation logic
     function handleKeyDown(e) {
         const currentElement = focusableElements[currentIndex];
@@ -47,7 +104,7 @@ window.onload = function () {
             case tvKey.RIGHT:
                 if (isMenu) {
                     // Move from menu to trending carousel first item
-                    newIndex = Array.from(focusableElements).indexOf(trendingItems[0]);
+                    if(trendingItems.length > 0) newIndex = Array.from(focusableElements).indexOf(trendingItems[0]);
                 } else if (trendingItems.includes(currentElement)) {
                     // Move right in trending
                     let idx = trendingItems.indexOf(currentElement);
@@ -95,7 +152,7 @@ window.onload = function () {
                     // Move from trending to popular, keep roughly same column
                     let idx = trendingItems.indexOf(currentElement);
                     let targetIdx = Math.min(idx, popularItems.length - 1);
-                    newIndex = Array.from(focusableElements).indexOf(popularItems[targetIdx]);
+                    if (popularItems.length > 0) newIndex = Array.from(focusableElements).indexOf(popularItems[targetIdx]);
                 }
                 break;
 
@@ -109,7 +166,7 @@ window.onload = function () {
                     // Move from popular to trending
                     let idx = popularItems.indexOf(currentElement);
                     let targetIdx = Math.min(idx, trendingItems.length - 1);
-                    newIndex = Array.from(focusableElements).indexOf(trendingItems[targetIdx]);
+                    if(trendingItems.length > 0) newIndex = Array.from(focusableElements).indexOf(trendingItems[targetIdx]);
                 }
                 break;
 
