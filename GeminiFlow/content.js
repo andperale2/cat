@@ -104,15 +104,18 @@ class GeminiFlowOrchestrator {
       promptText += antiMutationStr;
     }
 
-    const shortcodeMatches = promptText.match(/@[a-zA-Z0-9_]+/g) || [];
+    // Extract strictly unique shortcodes using word boundaries to prevent substring overlap
+    const rawMatches = promptText.match(/\@[a-zA-Z0-9_-]+\b/g) || [];
+    const uniqueShortcodes = [...new Set(rawMatches)];
 
     // Fetch assets from DB
     const assetsToInject = [];
-    for (const code of shortcodeMatches) {
+    for (const code of uniqueShortcodes) {
       const asset = await this.db.getAsset(code);
       if (asset) {
         assetsToInject.push(asset);
-        promptText = promptText.replace(code, '').trim(); // Remove shortcode from text
+        // Cleanse prompt text globally of this shortcode to avoid text leakage
+        promptText = promptText.split(code).join('').trim();
       }
     }
 

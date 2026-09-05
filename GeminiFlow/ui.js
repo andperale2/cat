@@ -398,9 +398,9 @@ class GeminiFlowUI {
               <div class="dropzone">
                 <div class="dropzone-label">Drop Keyframes / Character Sheets</div>
                 <div style="display:flex; gap:8px;">
-                  <input type="text" id="gf-asset-shortcode" placeholder="@TAG (e.g. @CHARAC1)" style="margin:0;">
-                  <input type="file" id="gf-asset-file" accept="image/*" style="font-size:10px; width:150px;">
-                  <button id="gf-upload-asset-btn" class="btn-micro cyan">ADD</button>
+                  <input type="text" id="gf-asset-shortcode" placeholder="@TAG (auto-assigned if empty)" style="margin:0;">
+                  <input type="file" id="gf-asset-file" accept="image/*" multiple style="font-size:10px; width:150px;">
+                  <button id="gf-upload-asset-btn" class="btn-micro cyan">ADD MEDIA</button>
                 </div>
               </div>
               <div id="gf-asset-list"></div>
@@ -410,7 +410,10 @@ class GeminiFlowUI {
             <div id="gf-flows" class="gf-tab-content" style="display: none;">
                <div style="margin-bottom:15px;">
                  <strong style="display:block; margin-bottom:5px; color:#8B949E; font-size:10px;">PRESET LOADERS</strong>
-                 <button id="gf-load-aas-btn" class="btn-micro cyan" style="width:100%;">LOAD ANIME-TO-LIVE-ACTION (AAS)</button>
+                 <div style="display:flex; gap:5px;">
+                   <button id="gf-load-aas-btn" class="btn-micro cyan" style="flex:1;">AAS DUAL-PASS (RAW ANIME)</button>
+                   <button id="gf-load-direct-btn" class="btn-micro" style="flex:1;">DIRECT PHOTOREAL (SKIP PASS 1)</button>
+                 </div>
                </div>
 
                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
@@ -566,23 +569,37 @@ class GeminiFlowUI {
       }
     });
 
-    // Asset Upload
+    // Asset Upload (Bulk Support)
     this.shadow.querySelector('#gf-upload-asset-btn').addEventListener('click', async () => {
-      const shortcode = this.shadow.querySelector('#gf-asset-shortcode').value.trim();
+      const inputShortcode = this.shadow.querySelector('#gf-asset-shortcode').value.trim();
       const fileInput = this.shadow.querySelector('#gf-asset-file');
-      const file = fileInput.files[0];
+      const files = fileInput.files;
 
-      if (!shortcode || !shortcode.startsWith('@')) {
-        this.logTerm('ERR: Tag must start with @', 'err');
-        return;
-      }
-      if (!file) {
-        this.logTerm('ERR: Missing keyframe image file', 'err');
+      if (files.length === 0) {
+        this.logTerm('ERR: Missing media files', 'err');
         return;
       }
 
-      await window.GeminiFlowDB.saveAsset(shortcode, file, file.name);
-      this.logTerm(`SYS: Ingested media [${shortcode}]`);
+      const existingAssets = await window.GeminiFlowDB.getAllAssets();
+      let autoIndex = existingAssets.length + 1;
+
+      for (let i = 0; i < files.length; i++) {
+         const file = files[i];
+         let tag = inputShortcode;
+
+         if (!tag) {
+            tag = `@${autoIndex}`;
+            autoIndex++;
+         } else if (files.length > 1) {
+            tag = `${inputShortcode}_${i+1}`;
+         }
+
+         if (!tag.startsWith('@')) tag = `@${tag}`;
+
+         await window.GeminiFlowDB.saveAsset(tag, file, file.name);
+         this.logTerm(`SYS: Ingested media [${tag}]`);
+      }
+
       this.shadow.querySelector('#gf-asset-shortcode').value = '';
       fileInput.value = '';
       this.refreshAssetsList();
@@ -600,6 +617,17 @@ class GeminiFlowUI {
       ];
       aasSteps.forEach((step, idx) => this.addStepEditor(step.prompt, step.delay, idx+1));
       this.logTerm(`SYS: AAS Preset Loaded to Timeline`);
+    });
+
+    this.shadow.querySelector('#gf-load-direct-btn').addEventListener('click', () => {
+      this.shadow.querySelector('#gf-flow-name').value = "Direct Photoreal Sequence";
+      this.shadow.querySelector('#gf-steps-container').innerHTML = '';
+      const directSteps = [
+        { prompt: "Live-action cinematic photograph of @1. Convert into photorealistic human skin texture, authentic fabric, natural hair strands, and physically accurate lighting. Enforce strict human biological proportions: exactly two arms, two legs, and five fingers per hand. Cinematic medium shot, 35mm film grain, anamorphic lens contrast, deep shadows. Avoid: anime drawing, 2D contours, plastic CGI skin, duplicate limbs, third arm, extra legs, fused fingers, body morphing, mutant anatomy.", delay: 4000 },
+        { prompt: "SCENE @foto1 vs @2 | SHOT 1 5S I2V. REFS: @foto1 the attacker, @2 the defender. @foto1 attacks relentlessly with rapid strikes; @2 remains completely still with arms crossed. At the exact instant of each blow, a sharp impact particle burst snaps up to parry then immediately vanishes. Dynamic handheld camera orbiting the fighters with slight whip-in on impact. Granular weight and thuds. COLOR GRADE: cinematic film, cool desaturated base, warm practical highlights.", delay: 4000 }
+      ];
+      directSteps.forEach((step, idx) => this.addStepEditor(step.prompt, step.delay, idx+1));
+      this.logTerm(`SYS: Direct Preset Loaded to Timeline`);
     });
 
     // Add Clip

@@ -15,6 +15,8 @@ class GeminiFlowDOMActions {
   getSendButton() {
     let btn = document.querySelector('button[aria-label*="Send"]') ||
               document.querySelector('button[aria-label*="send"]') ||
+              document.querySelector('button[aria-label*="Submit"]') ||
+              document.querySelector('button[aria-label*="Enviar"]') ||
               document.querySelector('.send-button');
 
     if (!btn) {
@@ -57,8 +59,9 @@ class GeminiFlowDOMActions {
     // Create a File object from the blob
     const file = new File([blob], filename || "ref.png", { type: blob.type || "image/png" });
 
-    // Create DataTransfer
+    // Create DataTransfer (fresh instance per injection avoids duplication)
     const dt = new DataTransfer();
+    dt.items.clear(); // Explicit clear just in case
     dt.items.add(file);
 
     // Create paste event
@@ -73,6 +76,9 @@ class GeminiFlowDOMActions {
 
     // Wait for the thumbnail preview to appear (heuristic)
     await this.waitForThumbnail();
+
+    // Add a tiny buffer so Gemini's React state processes the file before moving to the next
+    await new Promise(r => setTimeout(r, 1000));
   }
 
   async waitForThumbnail() {
@@ -142,21 +148,26 @@ class GeminiFlowDOMActions {
         if (isGenerating) {
           generationStarted = true;
         } else if (generationStarted && !isGenerating) {
-          // Generation finished
-          clearInterval(checkInterval);
-          // Wait a tiny bit extra for DOM to completely settle images
-          setTimeout(() => resolve(true), 2000);
+          // Extra verification: Check if send button is re-enabled to confirm generation is TRULY finished
+          const btn = this.getSendButton();
+          const isButtonReady = btn && !btn.disabled && btn.getAttribute('aria-disabled') !== "true";
+
+          if (isButtonReady) {
+            clearInterval(checkInterval);
+            // Wait a tiny bit extra for DOM to completely settle images
+            setTimeout(() => resolve(true), 2500);
+          }
         }
       };
 
       // Poll every 500ms
       checkInterval = setInterval(checkState, 500);
 
-      // Safety timeout: 2 minutes
+      // Safety timeout: extended to 3 minutes for long generation delays
       setTimeout(() => {
         clearInterval(checkInterval);
         resolve(false); // timeout
-      }, 120000);
+      }, 180000);
     });
   }
 
