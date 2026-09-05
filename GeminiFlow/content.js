@@ -14,6 +14,10 @@ class GeminiFlowOrchestrator {
     this.isPaused = false;
     this.delayTimer = null;
 
+    // Sequence session storage
+    this.sequenceAssets = [];
+    this.sequencePrompts = [];
+
     // Bind UI callbacks
     this.ui.callbacks.onStartFlow = this.startFlow.bind(this);
     this.ui.callbacks.onPauseFlow = this.pauseFlow.bind(this);
@@ -31,6 +35,8 @@ class GeminiFlowOrchestrator {
     this.currentStepIndex = 0;
     this.isRunning = true;
     this.isPaused = false;
+    this.sequenceAssets = [];
+    this.sequencePrompts = [];
     this.ui.setRunningState(true);
 
     this.ui.logTerm(`SYS: Engine Start -> ${this.currentFlow.name}`, "sys");
@@ -79,9 +85,9 @@ class GeminiFlowOrchestrator {
 
     if (this.currentStepIndex >= this.currentFlow.steps.length) {
       this.ui.logTerm("SYS: MASTER SEQUENCE COMPLETE", "sys");
+      await this.packageFullSequence();
       this.ui.setRunningState(false);
       this.isRunning = false;
-      this.ui.updateTracker(0, this.currentFlow.steps.length, "IDLE");
       return;
     }
 
@@ -89,8 +95,15 @@ class GeminiFlowOrchestrator {
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "RUNNING");
     this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Loading into engine buffer...`);
 
-    // 1. Process prompt for shortcodes
+    // 1. Process prompt for shortcodes and inject Anti-Mutation Protocol
     let promptText = step.prompt;
+
+    // Inject Anatomical Guardrails non-negotiable anchors
+    const antiMutationStr = " Avoid: extra arms, third leg, floating limbs, duplicate head, fused hands, distorted spine, unnatural joints, anatomical glitches. Maintain static composed stance, feet planted on ground for all secondary characters.";
+    if (!promptText.includes("extra arms")) {
+      promptText += antiMutationStr;
+    }
+
     const shortcodeMatches = promptText.match(/@[a-zA-Z0-9_]+/g) || [];
 
     // Fetch assets from DB
@@ -135,10 +148,10 @@ class GeminiFlowOrchestrator {
       this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Generation Complete.`, "sys");
     }
 
-    // 6. Extract & Package
+    // 6. Extract & Queue Image
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "ZIPPING");
     this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Extracting Master Plates...`);
-    await this.extractAndPackageImages(this.currentStepIndex + 1);
+    await this.extractAndQueueImages(this.currentStepIndex + 1, promptText);
 
     // 7. Delay before next step
     if (this.isRunning) {
@@ -181,24 +194,17 @@ class GeminiFlowOrchestrator {
     });
   }
 
-  async extractAndPackageImages(stepNum) {
-    // Look for the latest response container
-    // Gemini often wraps responses in specific tags. We look for images in the most recent model-response.
+  async extractAndQueueImages(stepNum, promptText) {
     const messageContainers = document.querySelectorAll('message-content');
     if (messageContainers.length === 0) return;
 
     const lastContainer = messageContainers[messageContainers.length - 1];
-
-    // Find images (ignoring avatars, icons)
-    // Often generated images are in <img> tags with URLs from googleusercontent
     const imgEls = lastContainer.querySelectorAll('img');
     const imageUrls = [];
 
     imgEls.forEach(img => {
       const src = img.src;
-      // Filter heuristic: googleusercontent and not small avatar
       if (src && src.includes('googleusercontent.com') && !src.includes('avatar')) {
-        // Upscale: replace or append =s2048
         let hqSrc = src;
         if (hqSrc.includes('=')) {
           hqSrc = hqSrc.replace(/=s\d+.*$/, '=s2048');
@@ -214,41 +220,66 @@ class GeminiFlowOrchestrator {
       return;
     }
 
-    this.ui.logTerm(`[EXPORT] Assembling ${imageUrls.length} frame(s) into Master Zip...`);
+    this.ui.logTerm(`[SYS] Queuing ${imageUrls.length} frame(s) for final sequence export...`);
 
-    const zip = new JSZip();
+    this.sequencePrompts.push({
+      step: stepNum,
+      prompt: promptText,
+      imagesExtracted: imageUrls.length
+    });
 
     for (let i = 0; i < imageUrls.length; i++) {
       const url = imageUrls[i];
       try {
-        // Ask background script to fetch to bypass CORS
         const base64Data = await this.fetchImageViaBackground(url);
         if (base64Data) {
-          // base64Data is in format "data:image/jpeg;base64,....."
           const base64 = base64Data.split(',')[1];
-          zip.file(`step${stepNum}_image${i+1}.jpg`, base64, {base64: true});
+          const filename = `foto${stepNum}.jpg`; // Tag it appropriately, e.g. foto1, foto2
+          this.sequenceAssets.push({ filename, base64 });
         }
       } catch (err) {
         console.error("Failed to fetch image", url, err);
+        this.ui.logTerm(`ERR: Failed to queue image from step ${stepNum}`, "err");
       }
     }
+  }
 
-    this.ui.logTerm(`[EXPORT] Flushing buffer to local disk...`);
+  async packageFullSequence() {
+    if (this.sequenceAssets.length === 0) {
+       this.ui.logTerm("ERR: No assets collected to package.", "err");
+       this.ui.updateTracker(0, this.currentFlow.steps.length, "IDLE");
+       return;
+    }
+
+    this.ui.logTerm(`[EXPORT] Assembling full sequence into Master Zip...`);
+    const zip = new JSZip();
+
+    // Add images
+    this.sequenceAssets.forEach(asset => {
+      zip.file(asset.filename, asset.base64, {base64: true});
+    });
+
+    // Add metadata
+    zip.file("sequence_metadata.json", JSON.stringify(this.sequencePrompts, null, 2));
+
+    this.ui.logTerm(`[EXPORT] Flushing complete sequence to local disk...`);
     const zipBlob = await zip.generateAsync({type: "blob"});
     const objectUrl = URL.createObjectURL(zipBlob);
 
-    // Trigger download directly from content script context using synthetic anchor
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const a = document.createElement("a");
     a.href = objectUrl;
-    a.download = `GeminiFlow_Step${stepNum}.zip`;
+    a.download = `GeminiFlow_FullSequence_${timestamp}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
 
-    // Clean up
     setTimeout(() => {
       URL.revokeObjectURL(objectUrl);
     }, 10000);
+
+    this.ui.logTerm("STATUS: ALL ASSETS PACKAGED (ZIP READY)", "sys");
+    this.ui.updateTracker(this.currentFlow.steps.length - 1, this.currentFlow.steps.length, "IDLE");
   }
 
   fetchImageViaBackground(url) {
