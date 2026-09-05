@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Fetch image from URL, bypassing CORS as background workers have greater privileges
     fetch(request.url)
       .then(response => {
-        if (!response.ok) throw new Error(\`Network response was not ok: \${response.status}\`);
+        if (!response.ok) throw new Error(`Network response was not ok: ${response.status}`);
         return response.blob();
       })
       .then(blob => {

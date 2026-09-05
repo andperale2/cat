@@ -81,7 +81,7 @@ class GeminiFlowOrchestrator {
     }
 
     const step = this.currentFlow.steps[this.currentStepIndex];
-    this.ui.updateStatus("Injecting Prompt", \`\${this.currentStepIndex + 1} of \${this.currentFlow.steps.length}\`, null);
+    this.ui.updateStatus("Injecting Prompt", `${this.currentStepIndex + 1} of ${this.currentFlow.steps.length}`, null);
 
     // 1. Process prompt for shortcodes
     let promptText = step.prompt;
@@ -204,7 +204,7 @@ class GeminiFlowOrchestrator {
       return;
     }
 
-    this.ui.updateStatus(\`Downloading \${imageUrls.length} images...\`, null, null);
+    this.ui.updateStatus(`Downloading ${imageUrls.length} images...`, null, null);
 
     const zip = new JSZip();
 
@@ -216,7 +216,7 @@ class GeminiFlowOrchestrator {
         if (base64Data) {
           // base64Data is in format "data:image/jpeg;base64,....."
           const base64 = base64Data.split(',')[1];
-          zip.file(\`step\${stepNum}_image\${i+1}.jpg\`, base64, {base64: true});
+          zip.file(`step${stepNum}_image${i+1}.jpg`, base64, {base64: true});
         }
       } catch (err) {
         console.error("Failed to fetch image", url, err);
@@ -230,7 +230,7 @@ class GeminiFlowOrchestrator {
     // Trigger download directly from content script context using synthetic anchor
     const a = document.createElement("a");
     a.href = objectUrl;
-    a.download = \`GeminiFlow_Step\${stepNum}.zip\`;
+    a.download = `GeminiFlow_Step${stepNum}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

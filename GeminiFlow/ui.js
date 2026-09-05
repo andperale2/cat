@@ -187,7 +187,7 @@ class GeminiFlowUI {
     list.innerHTML = '';
     assets.forEach(asset => {
       const li = document.createElement('li');
-      li.innerText = \`\${asset.shortcode} (\${asset.filename})\`;
+      li.innerText = `${asset.shortcode} (${asset.filename})`;
       const delBtn = document.createElement('button');
       delBtn.innerText = 'Del';
       delBtn.onclick = async () => {
@@ -248,14 +248,14 @@ class GeminiFlowUI {
 
   updateStatus(statusText, stepText = null, countdown = null) {
     if (statusText !== null) {
-      this.container.querySelector('#gf-status-text').innerText = \`Status: \${statusText}\`;
+      this.container.querySelector('#gf-status-text').innerText = `Status: ${statusText}`;
     }
     if (stepText !== null) {
-      this.container.querySelector('#gf-step-text').innerText = \`Step: \${stepText}\`;
+      this.container.querySelector('#gf-step-text').innerText = `Step: ${stepText}`;
     }
     const cdEl = this.container.querySelector('#gf-countdown');
     if (countdown !== null) {
-      cdEl.innerText = \`Wait: \${countdown}s\`;
+      cdEl.innerText = `Wait: ${countdown}s`;
       cdEl.style.display = 'block';
     } else {
       cdEl.style.display = 'none';
