@@ -58,6 +58,16 @@ class DB {
 
   async saveFlow(flow) {
     await this.init();
+
+    // Perform upsert deduplication by checking name if ID isn't provided
+    if (!flow.id) {
+      const existingFlows = await this.getAllFlows();
+      const match = existingFlows.find(f => f.name.trim().toLowerCase() === flow.name.trim().toLowerCase());
+      if (match) {
+        flow.id = match.id;
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([FLOWS_STORE], "readwrite");
       const store = transaction.objectStore(FLOWS_STORE);

@@ -195,32 +195,60 @@ class GeminiFlowOrchestrator {
   }
 
   async extractAndQueueImages(stepNum, promptText) {
-    const messageContainers = document.querySelectorAll('message-content');
-    if (messageContainers.length === 0) return;
+    // Check multiple broad selectors to find the most recent bot response container
+    const messageContainers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"], div.image-container');
+    if (messageContainers.length === 0) {
+      this.ui.logTerm(`ERR: No response container detected for [CLIP ${stepNum}]`, "err");
+      return;
+    }
 
     const lastContainer = messageContainers[messageContainers.length - 1];
-    const imgEls = lastContainer.querySelectorAll('img');
+
+    // Fallback: search the entire DOM for images if container is empty, but scoped is safer
+    let imgEls = Array.from(lastContainer.querySelectorAll('img'));
+    if (imgEls.length === 0) {
+       imgEls = Array.from(document.querySelectorAll('img[src*="googleusercontent.com"]'));
+    }
+
     const imageUrls = [];
 
-    imgEls.forEach(img => {
+    for (const img of imgEls) {
       const src = img.src;
-      if (src && src.includes('googleusercontent.com') && !src.includes('avatar')) {
+      const isAvatar = src.includes('avatar') || img.alt.toLowerCase().includes('profile');
+
+      // Strict filtering
+      if (src && src.includes('googleusercontent.com') && !isAvatar) {
+
+        // Wait for image to render to verify dimensions if it's not complete
+        if (!img.complete) {
+           await new Promise(resolve => {
+             img.onload = resolve;
+             img.onerror = resolve;
+             // Safety timeout 3s per image
+             setTimeout(resolve, 3000);
+           });
+        }
+
+        // Filter out small UI icons/badges
+        if (img.naturalWidth > 0 && img.naturalWidth < 120) continue;
+
         let hqSrc = src;
         if (hqSrc.includes('=')) {
+          hqSrc = hqSrc.replace(/=w\d+-h\d+-?[a-zA-Z0-9-]*$/, '=s2048');
           hqSrc = hqSrc.replace(/=s\d+.*$/, '=s2048');
         } else {
           hqSrc += '=s2048';
         }
         imageUrls.push(hqSrc);
       }
-    });
+    }
 
     if (imageUrls.length === 0) {
-      this.ui.logTerm(`ERR: No render nodes detected in DOM.`, "err");
+      this.ui.logTerm(`ERR: No valid render nodes detected in DOM for [CLIP ${stepNum}]`, "err");
       return;
     }
 
-    this.ui.logTerm(`[SYS] Queuing ${imageUrls.length} frame(s) for final sequence export...`);
+    this.ui.logTerm(`SYS: Scraped frame output for [CLIP ${stepNum}] (2048px)`);
 
     this.sequencePrompts.push({
       step: stepNum,
@@ -242,6 +270,8 @@ class GeminiFlowOrchestrator {
         this.ui.logTerm(`ERR: Failed to queue image from step ${stepNum}`, "err");
       }
     }
+
+    this.ui.logTerm(`SYS: Queued image for packaging (Total: ${this.sequenceAssets.length})`);
   }
 
   async packageFullSequence() {
