@@ -38,6 +38,20 @@ class DB {
           db.createObjectStore(ASSETS_STORE, { keyPath: "shortcode" });
         }
       };
+    }).then(async (db) => {
+      // Seed default preset if none exist
+      const flows = await this.getAllFlows();
+      if (flows.length === 0) {
+        await this.saveFlow({
+          name: "Anime to Live-Action (AAS)",
+          steps: [
+            { step: 1, prompt: "Live-action realistic version of this frame, photographic, true-to-life skin and textures. Keep the original composition and pose of @1. A focused character stands in @2, calm and resolute expression. Medium shot, slight low angle. Cinematic atmosphere, cold ambient base, warm practical highlights, subtle fog in background, fine film grain, shallow depth of field. Avoid: anime, cartoon, illustration, distorted hands, extra limbs, plastic skin, on-screen text.", delay: 4000 },
+            { step: 2, prompt: "SCENE @1 vs @2 | SHOT 1 5S I2V. REFS: @1 the attacker, @2 the defender, @3 the arena plate. @1 attacks relentlessly with rapid strikes; @2 remains completely still with arms crossed. At the exact instant of each blow, a sharp impact particle burst snaps up to parry then immediately vanishes. Dynamic handheld camera orbiting the fighters with slight whip-in on impact. Granular weight and thuds. COLOR GRADE: cinematic film, cool desaturated base, warm practical highlights, filmic contrast, subtle teal-orange, fine grain, anamorphic. AVOID: deformed limbs, fused fingers, permanent standing shields, weightless particles, @2 moving his body.", delay: 4000 },
+            { step: 3, prompt: "SCENE @1 vs @2 | 15S SEQUENCE. OPENING (0-2s): High overhead shot of @2 standing alone in center of @3. STRIKE 1 (2-4s): @1 blurs in at high speed behind @2. RAPID FLURRY (4-12s): Relentless assault from alternating angles; sand parries later and harder each time. FINISH (12-15s): @1 lands a decisive clean hit flush on target, whip-pan with micro slow-motion on impact. COLOR GRADE: cinematic film, cool desaturated base, fine grain. AVOID: cartoon look, duplicate limbs, floating particles, melting faces.", delay: 4000 }
+          ]
+        });
+      }
+      return db;
     });
   }
 
