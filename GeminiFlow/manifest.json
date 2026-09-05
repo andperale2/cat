@@ -25,9 +25,6 @@
         "dom_actions.js",
         "ui.js",
         "content.js"
-      ],
-      "css": [
-        "ui.css"
       ]
     }
   ],

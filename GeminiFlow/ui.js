@@ -1,8 +1,9 @@
-/* GeminiFlow UI Implementation */
+/* GeminiFlow Shadow DOM UI Implementation - DaVinci Studio Overhaul */
 
 class GeminiFlowUI {
   constructor() {
-    this.container = null;
+    this.hostContainer = null;
+    this.shadow = null;
     this.isDragging = false;
     this.dragStartX = 0;
     this.dragStartY = 0;
@@ -13,99 +14,549 @@ class GeminiFlowUI {
       onSkipStep: null,
     };
 
+    // Maintain state for asset URLs to revoke them
+    this.objectUrls = [];
+
+    // Live timecode simulation
+    this.tcInterval = null;
+    this.tcFrames = 0;
+
     this.init();
   }
 
   init() {
-    if (document.getElementById('geminiflow-ui-container')) return;
+    if (document.getElementById('geminiflow-studio-host')) return;
 
-    this.container = document.createElement('div');
-    this.container.id = 'geminiflow-ui-container';
-    this.container.innerHTML = `
-      <div id="gf-header">
-        <span class="gf-title">GeminiFlow</span>
-        <button id="gf-toggle-btn">_</button>
-      </div>
-      <div id="gf-body">
-        <div class="gf-tabs">
-          <button class="gf-tab active" data-target="gf-exec">Run</button>
-          <button class="gf-tab" data-target="gf-flows">Flows</button>
-          <button class="gf-tab" data-target="gf-assets">Assets</button>
+    this.hostContainer = document.createElement('div');
+    this.hostContainer.id = 'geminiflow-studio-host';
+    this.hostContainer.style.position = 'fixed';
+    this.hostContainer.style.top = '20px';
+    this.hostContainer.style.right = '20px';
+    this.hostContainer.style.zIndex = '999999';
+
+    // Attach Shadow DOM
+    this.shadow = this.hostContainer.attachShadow({ mode: 'open' });
+
+    const css = `
+      :host {
+        display: block;
+        width: 480px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 12px;
+        color: #C9D1D9;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      }
+
+      * { box-sizing: border-box; }
+
+      .studio-panel {
+        background: #0D1117;
+        border: 1px solid #30363D;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Header & Toolbar */
+      .header-toolbar {
+        background: #161B22;
+        border-bottom: 1px solid #30363D;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: move;
+        user-select: none;
+      }
+
+      .rec-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        font-size: 11px;
+        color: #8B949E;
+        letter-spacing: 0.5px;
+      }
+
+      .rec-dot {
+        width: 8px;
+        height: 8px;
+        background: #FF4D4D;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #FF4D4D;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.3; }
+        100% { opacity: 1; }
+      }
+
+      .timecode {
+        font-family: "SF Mono", "JetBrains Mono", Consolas, monospace;
+        color: #54C8D8;
+        background: #090D10;
+        padding: 2px 6px;
+        border-radius: 3px;
+        border: 1px solid #30363D;
+        font-size: 11px;
+      }
+
+      .window-controls button {
+        background: none;
+        border: none;
+        color: #8B949E;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .window-controls button:hover { color: #FFF; }
+
+      /* Switcher Tabs */
+      .tab-switcher {
+        display: flex;
+        background: #090D10;
+        border-bottom: 1px solid #30363D;
+      }
+
+      .tab-btn {
+        flex: 1;
+        background: none;
+        border: none;
+        color: #8B949E;
+        padding: 10px 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+      }
+
+      .tab-btn:hover { color: #C9D1D9; background: #161B22; }
+      .tab-btn.active {
+        color: #FFF;
+        border-bottom: 2px solid #54C8D8;
+        background: #161B22;
+      }
+
+      /* Content Area */
+      .panel-body {
+        max-height: 550px;
+        overflow-y: auto;
+        padding: 15px;
+        background: #0D1117;
+      }
+
+      .panel-body::-webkit-scrollbar { width: 8px; }
+      .panel-body::-webkit-scrollbar-track { background: #090D10; }
+      .panel-body::-webkit-scrollbar-thumb { background: #30363D; border-radius: 4px; }
+
+      /* Forms & Inputs */
+      input[type="text"], input[type="number"], select {
+        width: 100%;
+        background: #090D10;
+        border: 1px solid #30363D;
+        color: #54C8D8;
+        padding: 8px;
+        border-radius: 4px;
+        font-family: "SF Mono", Consolas, monospace;
+        font-size: 11px;
+        margin-bottom: 10px;
+        outline: none;
+      }
+      input[type="text"]:focus, input[type="number"]:focus, select:focus {
+        border-color: #54C8D8;
+      }
+
+      /* Asset Dropzone */
+      .dropzone {
+        border: 1px dashed #54C8D8;
+        background: rgba(84, 200, 216, 0.05);
+        padding: 15px;
+        text-align: center;
+        border-radius: 4px;
+        margin-bottom: 15px;
+      }
+      .dropzone-label { color: #54C8D8; font-weight: 600; margin-bottom: 10px; }
+
+      /* Media Row (Assets) */
+      .media-row {
+        background: #161B22;
+        border: 1px solid #30363D;
+        border-radius: 4px;
+        display: flex;
+        padding: 8px;
+        margin-bottom: 8px;
+        align-items: center;
+        gap: 12px;
+      }
+      .media-thumb {
+        width: 48px;
+        height: 48px;
+        background: #000;
+        border-radius: 4px;
+        object-fit: cover;
+        border: 1px solid #30363D;
+      }
+      .media-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .media-pill {
+        display: inline-block;
+        background: rgba(84, 200, 216, 0.15);
+        color: #54C8D8;
+        font-family: "SF Mono", Consolas, monospace;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 10px;
+        border: 1px solid rgba(84, 200, 216, 0.3);
+      }
+      .media-filename { color: #8B949E; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+
+      /* Micro Buttons */
+      .btn-micro {
+        background: none;
+        border: 1px solid #30363D;
+        color: #C9D1D9;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn-micro.cyan { color: #54C8D8; border-color: rgba(84, 200, 216, 0.5); }
+      .btn-micro.cyan:hover { background: rgba(84, 200, 216, 0.1); }
+      .btn-micro.red { color: #FF4D4D; border-color: rgba(255, 77, 77, 0.5); }
+      .btn-micro.red:hover { background: rgba(255, 77, 77, 0.1); }
+
+      /* Timeline / Flows */
+      .timeline-clip {
+        background: #161B22;
+        border: 1px solid #30363D;
+        border-left: 3px solid #FF9E45;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+      .clip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .clip-tc {
+        background: #090D10;
+        color: #FF9E45;
+        font-family: "SF Mono", monospace;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        border: 1px solid #30363D;
+      }
+
+      .clip-textarea {
+        width: 100%;
+        height: 70px;
+        background: #090D10;
+        border: 1px solid #30363D;
+        color: #54C8D8;
+        padding: 8px;
+        border-radius: 4px;
+        font-family: "SF Mono", Consolas, monospace;
+        font-size: 11px;
+        resize: vertical;
+        outline: none;
+        margin-bottom: 8px;
+      }
+      .clip-textarea:focus { border-color: #54C8D8; }
+
+      .quick-chips {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        background: #30363D;
+        color: #C9D1D9;
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-family: "SF Mono", monospace;
+      }
+      .chip:hover { background: #54C8D8; color: #000; }
+
+      /* Master Deck / Run */
+      .master-deck {
+        background: #161B22;
+        padding: 15px;
+        border-radius: 4px;
+        border: 1px solid #30363D;
+      }
+
+      .btn-master {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        transition: all 0.2s;
+      }
+
+      .btn-master:disabled { opacity: 0.3; cursor: not-allowed; }
+
+      .btn-render {
+        background: #54C8D8;
+        color: #000;
+        box-shadow: 0 0 10px rgba(84, 200, 216, 0.2);
+      }
+      .btn-render:hover:not(:disabled) { box-shadow: 0 0 15px rgba(84, 200, 216, 0.5); }
+
+      .btn-hold { background: transparent; border: 1px solid #FF9E45; color: #FF9E45; }
+      .btn-hold:hover:not(:disabled) { background: rgba(255, 158, 69, 0.1); }
+
+      .btn-abort { background: transparent; border: 1px solid #FF4D4D; color: #FF4D4D; }
+      .btn-abort:hover:not(:disabled) { background: rgba(255, 77, 77, 0.1); }
+
+      /* Tracker / Terminal */
+      .tracker {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: "SF Mono", monospace;
+        font-size: 10px;
+        color: #8B949E;
+        margin-bottom: 15px;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 5px;
+      }
+      .tracker-node {
+        padding: 2px 6px;
+        border-radius: 3px;
+        border: 1px solid #30363D;
+      }
+      .tracker-node.active { color: #000; background: #54C8D8; border-color: #54C8D8; }
+
+      .terminal {
+        background: #090D10;
+        border: 1px solid #30363D;
+        border-radius: 4px;
+        padding: 8px;
+        height: 120px;
+        overflow-y: auto;
+        font-family: "SF Mono", Consolas, monospace;
+        font-size: 10px;
+        color: #C9D1D9;
+      }
+      .terminal p { margin: 0 0 4px 0; }
+      .term-warn { color: #FF9E45; }
+      .term-err { color: #FF4D4D; }
+      .term-sys { color: #54C8D8; }
+    `;
+
+    this.shadow.innerHTML = `
+      <style>${css}</style>
+      <div class="studio-panel">
+        <!-- Header -->
+        <div class="header-toolbar" id="gf-header">
+          <div class="rec-indicator">
+            <div class="rec-dot"></div>
+            AAS // ENGINE 2.0
+          </div>
+          <div class="timecode" id="tc-display">TC [00:00:00:00]</div>
+          <div class="window-controls">
+            <button id="gf-toggle-btn">_</button>
+          </div>
         </div>
 
-        <div id="gf-exec" class="gf-tab-content active">
-          <select id="gf-flow-select">
-            <option value="">Select a flow...</option>
-          </select>
-          <div class="gf-controls">
-            <button id="gf-start-btn" disabled>Start</button>
-            <button id="gf-pause-btn" disabled>Pause</button>
-            <button id="gf-stop-btn" disabled>Stop</button>
-            <button id="gf-skip-btn" disabled>Skip Step</button>
+        <div id="gf-body">
+          <!-- Switcher -->
+          <div class="tab-switcher">
+            <button class="tab-btn" data-target="gf-assets">MEDIA POOL</button>
+            <button class="tab-btn" data-target="gf-flows">TIMELINE</button>
+            <button class="tab-btn active" data-target="gf-exec">MASTER CONTROL</button>
           </div>
-          <div id="gf-status-panel">
-            <div id="gf-status-text">Status: Idle</div>
-            <div id="gf-step-text">Step: -</div>
-            <div id="gf-countdown"></div>
-          </div>
-        </div>
 
-        <div id="gf-flows" class="gf-tab-content" style="display: none;">
-          <div class="gf-flow-manager" style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ccc;">
-            <strong>Saved Flows</strong>
-            <ul id="gf-flow-list" style="list-style: none; padding: 0; margin-top: 5px;"></ul>
-          </div>
-          <div class="gf-flow-editor">
-            <div style="display: flex; gap: 5px; margin-bottom: 10px;">
-              <button id="gf-load-aas-btn" style="flex: 1; background: #e8f0fe; color: #1a73e8; border: 1px solid #1a73e8;">Load Anime to Live-Action Preset</button>
+          <div class="panel-body">
+            <!-- TAB: MEDIA POOL -->
+            <div id="gf-assets" class="gf-tab-content" style="display: none;">
+              <div class="dropzone">
+                <div class="dropzone-label">Drop Keyframes / Character Sheets</div>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="gf-asset-shortcode" placeholder="@TAG (e.g. @CHARAC1)" style="margin:0;">
+                  <input type="file" id="gf-asset-file" accept="image/*" style="font-size:10px; width:150px;">
+                  <button id="gf-upload-asset-btn" class="btn-micro cyan">ADD</button>
+                </div>
+              </div>
+              <div id="gf-asset-list"></div>
             </div>
-            <input type="text" id="gf-flow-name" placeholder="Flow Name">
-            <div id="gf-steps-container"></div>
-            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
-              <button id="gf-add-step-btn">+ Add Step</button>
-              <button id="gf-save-flow-btn" style="background: #1a73e8; color: white;">Save Flow</button>
+
+            <!-- TAB: TIMELINE -->
+            <div id="gf-flows" class="gf-tab-content" style="display: none;">
+               <div style="margin-bottom:15px;">
+                 <strong style="display:block; margin-bottom:5px; color:#8B949E; font-size:10px;">PRESET LOADERS</strong>
+                 <button id="gf-load-aas-btn" class="btn-micro cyan" style="width:100%;">LOAD ANIME-TO-LIVE-ACTION (AAS)</button>
+               </div>
+
+               <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                  <strong style="color:#8B949E; font-size:10px;">ACTIVE SEQUENCE</strong>
+                  <div style="display:flex; gap:5px;">
+                     <button id="gf-add-step-btn" class="btn-micro">ADD CLIP</button>
+                     <button id="gf-save-flow-btn" class="btn-micro cyan" style="background:#54C8D8; color:#000;">SAVE TIMELINE</button>
+                  </div>
+               </div>
+
+               <input type="text" id="gf-flow-name" placeholder="Sequence Name">
+               <div id="gf-steps-container"></div>
+
+               <div style="margin-top:20px; border-top:1px solid #30363D; padding-top:10px;">
+                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">SAVED SEQUENCES</strong>
+                 <div id="gf-flow-list"></div>
+               </div>
+            </div>
+
+            <!-- TAB: MASTER CONTROL -->
+            <div id="gf-exec" class="gf-tab-content active">
+              <select id="gf-flow-select">
+                <option value="">SELECT SEQUENCE TO RENDER...</option>
+              </select>
+
+              <div class="master-deck">
+                <div class="tracker" id="gf-tracker">
+                  <!-- Nodes injected dynamically -->
+                  <div class="tracker-node">[IDLE]</div>
+                </div>
+
+                <button id="gf-start-btn" class="btn-master btn-render" disabled>MASTER RENDER</button>
+                <div style="display:flex; gap:10px;">
+                  <button id="gf-pause-btn" class="btn-master btn-hold" disabled>HOLD</button>
+                  <button id="gf-skip-btn" class="btn-master" style="background:#30363D; color:#C9D1D9;" disabled>SKIP</button>
+                  <button id="gf-stop-btn" class="btn-master btn-abort" disabled>ABORT</button>
+                </div>
+              </div>
+
+              <div style="margin-top:15px;">
+                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">SYSTEM TERMINAL</strong>
+                 <div class="terminal" id="gf-terminal">
+                   <p class="term-sys">> System Ready.</p>
+                 </div>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div id="gf-assets" class="gf-tab-content" style="display: none;">
-          <div class="gf-asset-upload">
-            <input type="text" id="gf-asset-shortcode" placeholder="Shortcode (e.g. @foto1)">
-            <input type="file" id="gf-asset-file" accept="image/png, image/jpeg, image/webp">
-            <button id="gf-upload-asset-btn">Upload</button>
-          </div>
-          <ul id="gf-asset-list"></ul>
         </div>
       </div>
     `;
 
-    document.body.appendChild(this.container);
+    document.body.appendChild(this.hostContainer);
+    this.startTC();
     this.bindEvents();
     this.makeDraggable();
-    this.refreshAssetsList();
-    this.refreshFlowsList();
+
+    // We defer the DB loads slightly to ensure DB init finishes
+    setTimeout(() => {
+      this.refreshAssetsList();
+      this.refreshFlowsList();
+    }, 500);
   }
 
+  startTC() {
+    this.tcInterval = setInterval(() => {
+      this.tcFrames++;
+      const f = this.tcFrames % 24;
+      const s = Math.floor(this.tcFrames / 24) % 60;
+      const m = Math.floor(this.tcFrames / (24 * 60)) % 60;
+      const h = Math.floor(this.tcFrames / (24 * 60 * 60));
+
+      const pad = (n) => n.toString().padStart(2, '0');
+      this.shadow.querySelector('#tc-display').innerText = `TC [${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}]`;
+    }, 1000 / 24);
+  }
+
+  logTerm(msg, type="sys") {
+    const term = this.shadow.querySelector('#gf-terminal');
+    const p = document.createElement('p');
+    p.className = `term-${type}`;
+
+    // Format timestamp
+    const now = new Date();
+    const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+
+    p.innerText = `[${ts}] > ${msg}`;
+    term.appendChild(p);
+    term.scrollTop = term.scrollHeight;
+  }
+
+  updateTracker(stepIndex, total, status = "RUNNING") {
+    const tracker = this.shadow.querySelector('#gf-tracker');
+    tracker.innerHTML = '';
+
+    if (total === 0) {
+      tracker.innerHTML = `<div class="tracker-node">[IDLE]</div>`;
+      return;
+    }
+
+    for (let i = 0; i < total; i++) {
+      const node = document.createElement('div');
+      node.className = `tracker-node ${i === stepIndex ? 'active' : ''}`;
+      node.innerText = `[CLIP ${i+1}]`;
+      tracker.appendChild(node);
+
+      if (i < total - 1) {
+        const arrow = document.createElement('div');
+        arrow.innerText = ' ──> ';
+        tracker.appendChild(arrow);
+      }
+    }
+
+    if (status === "ZIPPING") {
+      const arrow = document.createElement('div');
+      arrow.innerText = ' ──> ';
+      tracker.appendChild(arrow);
+
+      const zipNode = document.createElement('div');
+      zipNode.className = 'tracker-node active';
+      zipNode.innerText = '[EXPORT]';
+      tracker.appendChild(zipNode);
+    }
+  }
+
+  // --- We will append the rest of the ui.js functionality in the next step ---
+
   bindEvents() {
-    // Tabs
-    const tabs = this.container.querySelectorAll('.gf-tab');
+    // Switcher Tabs
+    const tabs = this.shadow.querySelectorAll('.tab-btn');
     tabs.forEach(tab => {
       tab.addEventListener('click', (e) => {
         tabs.forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
 
-        const contents = this.container.querySelectorAll('.gf-tab-content');
+        const contents = this.shadow.querySelectorAll('.gf-tab-content');
         contents.forEach(c => c.style.display = 'none');
 
         const targetId = e.target.getAttribute('data-target');
-        this.container.querySelector('#' + targetId).style.display = 'block';
+        this.shadow.querySelector('#' + targetId).style.display = 'block';
       });
     });
 
-    // Toggle minimize
-    const toggleBtn = this.container.querySelector('#gf-toggle-btn');
+    // Window controls
+    const toggleBtn = this.shadow.querySelector('#gf-toggle-btn');
     toggleBtn.addEventListener('click', () => {
-      const body = this.container.querySelector('#gf-body');
+      const body = this.shadow.querySelector('#gf-body');
       if (body.style.display === 'none') {
         body.style.display = 'block';
         toggleBtn.innerText = '_';
@@ -115,123 +566,134 @@ class GeminiFlowUI {
       }
     });
 
-    // Flow Selection State
-    const flowSelect = this.container.querySelector('#gf-flow-select');
-    flowSelect.addEventListener('change', async (e) => {
-      const flowId = e.target.value;
-      const startBtn = this.container.querySelector('#gf-start-btn');
-      if (flowId) {
-        startBtn.disabled = false;
-        startBtn.style.background = "#1a73e8";
-        startBtn.style.color = "white";
-        // Show step count
-        const flow = await window.GeminiFlowDB.getFlow(parseInt(flowId, 10));
-        if (flow) {
-          this.updateStatus("Ready", `0 / ${flow.steps.length}`, null);
-        }
-      } else {
-        startBtn.disabled = true;
-        startBtn.style.background = "";
-        startBtn.style.color = "";
-        this.updateStatus("Idle", "-", null);
+    // Asset Upload
+    this.shadow.querySelector('#gf-upload-asset-btn').addEventListener('click', async () => {
+      const shortcode = this.shadow.querySelector('#gf-asset-shortcode').value.trim();
+      const fileInput = this.shadow.querySelector('#gf-asset-file');
+      const file = fileInput.files[0];
+
+      if (!shortcode || !shortcode.startsWith('@')) {
+        this.logTerm('ERR: Tag must start with @', 'err');
+        return;
       }
+      if (!file) {
+        this.logTerm('ERR: Missing keyframe image file', 'err');
+        return;
+      }
+
+      await window.GeminiFlowDB.saveAsset(shortcode, file, file.name);
+      this.logTerm(`SYS: Ingested media [${shortcode}]`);
+      this.shadow.querySelector('#gf-asset-shortcode').value = '';
+      fileInput.value = '';
+      this.refreshAssetsList();
     });
 
-    // Exec Controls
-    this.container.querySelector('#gf-start-btn').addEventListener('click', () => {
-      const flowId = this.container.querySelector('#gf-flow-select').value;
-      if (flowId && this.callbacks.onStartFlow) {
-        this.callbacks.onStartFlow(parseInt(flowId, 10));
-      }
-    });
-    this.container.querySelector('#gf-pause-btn').addEventListener('click', () => {
-      if (this.callbacks.onPauseFlow) this.callbacks.onPauseFlow();
-    });
-    this.container.querySelector('#gf-stop-btn').addEventListener('click', () => {
-      if (this.callbacks.onStopFlow) this.callbacks.onStopFlow();
-    });
-    this.container.querySelector('#gf-skip-btn').addEventListener('click', () => {
-      if (this.callbacks.onSkipStep) this.callbacks.onSkipStep();
-    });
-
-    // Flows Editor
-    this.container.querySelector('#gf-load-aas-btn').addEventListener('click', () => {
-      this.container.querySelector('#gf-flow-name').value = "Anime to Live-Action (AAS)";
-      this.container.querySelector('#gf-steps-container').innerHTML = '';
+    // Timeline Load Preset
+    this.shadow.querySelector('#gf-load-aas-btn').addEventListener('click', () => {
+      this.shadow.querySelector('#gf-flow-name').value = "Anime to Live-Action (AAS)";
+      this.shadow.querySelector('#gf-steps-container').innerHTML = '';
       const aasSteps = [
         { prompt: "Live-action realistic version of this frame, photographic, true-to-life skin and textures. Keep the original composition and pose of @1. A focused character stands in @2, calm and resolute expression. Medium shot, slight low angle. Cinematic atmosphere, cold ambient base, warm practical highlights, subtle fog in background, fine film grain, shallow depth of field. Avoid: anime, cartoon, illustration, distorted hands, extra limbs, plastic skin, on-screen text.", delay: 4000 },
         { prompt: "SCENE @1 vs @2 | SHOT 1 5S I2V. REFS: @1 the attacker, @2 the defender, @3 the arena plate. @1 attacks relentlessly with rapid strikes; @2 remains completely still with arms crossed. At the exact instant of each blow, a sharp impact particle burst snaps up to parry then immediately vanishes. Dynamic handheld camera orbiting the fighters with slight whip-in on impact. Granular weight and thuds. COLOR GRADE: cinematic film, cool desaturated base, warm practical highlights, filmic contrast, subtle teal-orange, fine grain, anamorphic. AVOID: deformed limbs, fused fingers, permanent standing shields, weightless particles, @2 moving his body.", delay: 4000 },
         { prompt: "SCENE @1 vs @2 | 15S SEQUENCE. OPENING (0-2s): High overhead shot of @2 standing alone in center of @3. STRIKE 1 (2-4s): @1 blurs in at high speed behind @2. RAPID FLURRY (4-12s): Relentless assault from alternating angles; sand parries later and harder each time. FINISH (12-15s): @1 lands a decisive clean hit flush on target, whip-pan with micro slow-motion on impact. COLOR GRADE: cinematic film, cool desaturated base, fine grain. AVOID: cartoon look, duplicate limbs, floating particles, melting faces.", delay: 4000 }
       ];
-      aasSteps.forEach(step => this.addStepEditor(step.prompt, step.delay));
+      aasSteps.forEach((step, idx) => this.addStepEditor(step.prompt, step.delay, idx+1));
+      this.logTerm(`SYS: AAS Preset Loaded to Timeline`);
     });
 
-    this.container.querySelector('#gf-add-step-btn').addEventListener('click', () => {
+    // Add Clip
+    this.shadow.querySelector('#gf-add-step-btn').addEventListener('click', () => {
       this.addStepEditor();
     });
 
-    this.container.querySelector('#gf-save-flow-btn').addEventListener('click', async () => {
-      const name = this.container.querySelector('#gf-flow-name').value;
-      if (!name) return alert('Flow name is required');
+    // Save Timeline
+    this.shadow.querySelector('#gf-save-flow-btn').addEventListener('click', async () => {
+      const name = this.shadow.querySelector('#gf-flow-name').value.trim();
+      if (!name) {
+        this.logTerm('ERR: Sequence name required', 'err');
+        return;
+      }
 
-      const stepEls = this.container.querySelectorAll('.gf-step-editor');
+      const stepEls = this.shadow.querySelectorAll('.gf-step-editor');
       const steps = Array.from(stepEls).map((el, index) => {
         return {
           step: index + 1,
-          prompt: el.querySelector('.gf-step-prompt').value,
-          delay: parseInt(el.querySelector('.gf-step-delay').value, 10) || 3000
+          prompt: el.querySelector('.clip-textarea').value,
+          delay: parseInt(el.querySelector('.gf-step-delay').value, 10) || 4000
         };
       });
 
-      if (steps.length === 0) return alert('Add at least one step');
+      if (steps.length === 0) {
+        this.logTerm('ERR: Empty timeline', 'err');
+        return;
+      }
 
-      const flow = { name, steps };
-      await window.GeminiFlowDB.saveFlow(flow);
-      alert('Flow saved!');
-      this.container.querySelector('#gf-flow-name').value = '';
-      this.container.querySelector('#gf-steps-container').innerHTML = '';
+      await window.GeminiFlowDB.saveFlow({ name, steps });
+      this.logTerm(`SYS: Timeline [${name}] saved to storage`);
+      this.shadow.querySelector('#gf-flow-name').value = '';
+      this.shadow.querySelector('#gf-steps-container').innerHTML = '';
       this.refreshFlowsList();
     });
 
-    // Assets Upload
-    this.container.querySelector('#gf-upload-asset-btn').addEventListener('click', async () => {
-      const shortcode = this.container.querySelector('#gf-asset-shortcode').value;
-      const fileInput = this.container.querySelector('#gf-asset-file');
-      const file = fileInput.files[0];
+    // Run Tab Selection
+    const flowSelect = this.shadow.querySelector('#gf-flow-select');
+    flowSelect.addEventListener('change', async (e) => {
+      const flowId = e.target.value;
+      const startBtn = this.shadow.querySelector('#gf-start-btn');
+      if (flowId) {
+        startBtn.disabled = false;
+        const flow = await window.GeminiFlowDB.getFlow(parseInt(flowId, 10));
+        if (flow) {
+          this.updateTracker(0, flow.steps.length, "IDLE");
+          this.logTerm(`SYS: Loaded Sequence [${flow.name}] (${flow.steps.length} Clips)`);
+        }
+      } else {
+        startBtn.disabled = true;
+        this.updateTracker(0, 0, "IDLE");
+      }
+    });
 
-      if (!shortcode || !shortcode.startsWith('@')) return alert('Shortcode must start with @ (e.g. @foto1)');
-      if (!file) return alert('Please select a file');
-
-      await window.GeminiFlowDB.saveAsset(shortcode, file, file.name);
-      alert('Asset saved!');
-      this.container.querySelector('#gf-asset-shortcode').value = '';
-      fileInput.value = '';
-      this.refreshAssetsList();
+    // Transport Controls
+    this.shadow.querySelector('#gf-start-btn').addEventListener('click', () => {
+      const flowId = this.shadow.querySelector('#gf-flow-select').value;
+      if (flowId && this.callbacks.onStartFlow) {
+        this.callbacks.onStartFlow(parseInt(flowId, 10));
+      }
+    });
+    this.shadow.querySelector('#gf-pause-btn').addEventListener('click', () => {
+      if (this.callbacks.onPauseFlow) this.callbacks.onPauseFlow();
+    });
+    this.shadow.querySelector('#gf-stop-btn').addEventListener('click', () => {
+      if (this.callbacks.onStopFlow) this.callbacks.onStopFlow();
+    });
+    this.shadow.querySelector('#gf-skip-btn').addEventListener('click', () => {
+      if (this.callbacks.onSkipStep) this.callbacks.onSkipStep();
     });
   }
 
-  addStepEditor(promptText = '', delayValue = 4000) {
-    const container = this.container.querySelector('#gf-steps-container');
-    const stepCount = container.children.length + 1;
+  addStepEditor(promptText = '', delayValue = 4000, forceIndex = null) {
+    const container = this.shadow.querySelector('#gf-steps-container');
+    const stepCount = forceIndex || (container.children.length + 1);
     const stepDiv = document.createElement('div');
-    stepDiv.className = 'gf-step-editor';
+    stepDiv.className = 'timeline-clip gf-step-editor';
 
-    // Safely inject text
-    const textarea = document.createElement('textarea');
-    textarea.className = 'gf-step-prompt';
-    textarea.placeholder = "Prompt text (e.g. A cat @foto1)";
-    textarea.value = promptText;
+    // Quick chips
+    const chips = ['@1', '@2', '@3', 'CUT:', 'COLOR GRADE:'].map(c =>
+      `<span class="chip" onclick="this.parentElement.nextElementSibling.value += ' ${c}'">${c}</span>`
+    ).join('');
 
     stepDiv.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-        <strong class="gf-step-label">Step ${stepCount}</strong>
-        <button class="gf-remove-step-btn" style="background:#ea4335; color:white; border:none; border-radius:3px; padding:2px 6px;">X</button>
+      <div class="clip-header">
+        <span class="clip-tc gf-step-label">CLIP ${stepCount}</span>
+        <button class="btn-micro red gf-remove-step-btn">TRASH</button>
       </div>
-      <div class="gf-step-textarea-container"></div>
-      <input type="number" class="gf-step-delay" placeholder="Delay (ms)" value="${delayValue}">
+      <div class="quick-chips">${chips}</div>
+      <textarea class="clip-textarea" placeholder="Enter screenplay beats or keyframe references...">${promptText}</textarea>
+      <div style="display:flex; align-items:center; gap:5px;">
+        <span style="color:#8B949E; font-size:10px;">DELAY (MS)</span>
+        <input type="number" class="gf-step-delay" value="${delayValue}" style="margin:0; width:80px;">
+      </div>
     `;
-
-    stepDiv.querySelector('.gf-step-textarea-container').appendChild(textarea);
 
     stepDiv.querySelector('.gf-remove-step-btn').addEventListener('click', () => {
       stepDiv.remove();
@@ -242,129 +704,120 @@ class GeminiFlowUI {
   }
 
   reindexSteps() {
-    const container = this.container.querySelector('#gf-steps-container');
+    const container = this.shadow.querySelector('#gf-steps-container');
     const steps = container.querySelectorAll('.gf-step-editor');
     steps.forEach((step, index) => {
-      step.querySelector('.gf-step-label').innerText = `Step ${index + 1}`;
+      step.querySelector('.gf-step-label').innerText = `CLIP ${index + 1}`;
     });
   }
 
   async refreshAssetsList() {
     const assets = await window.GeminiFlowDB.getAllAssets();
-    const list = this.container.querySelector('#gf-asset-list');
+    const list = this.shadow.querySelector('#gf-asset-list');
     list.innerHTML = '';
+
+    // Cleanup previous blob URLs
+    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.objectUrls = [];
+
     assets.forEach(asset => {
-      const li = document.createElement('li');
-      li.style.display = 'flex';
-      li.style.justifyContent = 'space-between';
-      li.style.alignItems = 'center';
+      const blobUrl = URL.createObjectURL(asset.blob);
+      this.objectUrls.push(blobUrl);
 
-      const label = document.createElement('span');
-      label.innerText = `${asset.shortcode} (${asset.filename})`;
+      const sizeKB = Math.round(asset.blob.size / 1024);
+      const row = document.createElement('div');
+      row.className = 'media-row';
 
-      const btnContainer = document.createElement('div');
+      row.innerHTML = `
+        <img src="${blobUrl}" class="media-thumb">
+        <div class="media-info">
+          <div><span class="media-pill">${asset.shortcode}</span></div>
+          <div class="media-filename">${asset.filename} | ${sizeKB} KB</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <button class="btn-micro cyan gf-inject-btn">INJECT</button>
+          <button class="btn-micro red gf-del-btn">TRASH</button>
+        </div>
+      `;
 
-      const insertBtn = document.createElement('button');
-      insertBtn.innerText = 'Copy';
-      insertBtn.style.background = '#34a853';
-      insertBtn.style.color = 'white';
-      insertBtn.style.border = 'none';
-      insertBtn.style.borderRadius = '3px';
-      insertBtn.style.padding = '2px 6px';
-      insertBtn.style.marginRight = '5px';
-      insertBtn.title = 'Copy shortcode to clipboard';
-      insertBtn.onclick = () => {
-        navigator.clipboard.writeText(asset.shortcode);
-        insertBtn.innerText = 'Copied!';
-        setTimeout(() => insertBtn.innerText = 'Copy', 2000);
-      };
+      row.querySelector('.gf-inject-btn').addEventListener('click', () => {
+        // Attempt to insert into the active timeline textarea, else copy to clipboard
+        const editors = this.shadow.querySelectorAll('.clip-textarea');
+        if (editors.length > 0) {
+           const last = editors[editors.length - 1];
+           last.value += ` ${asset.shortcode}`;
+           this.logTerm(`SYS: Injected ${asset.shortcode} into Timeline`);
+        } else {
+           navigator.clipboard.writeText(asset.shortcode);
+           this.logTerm(`SYS: Tag ${asset.shortcode} copied to clipboard`);
+        }
+      });
 
-      const delBtn = document.createElement('button');
-      delBtn.innerText = 'Del';
-      delBtn.style.background = '#ea4335';
-      delBtn.style.color = 'white';
-      delBtn.style.border = 'none';
-      delBtn.style.borderRadius = '3px';
-      delBtn.style.padding = '2px 6px';
-      delBtn.onclick = async () => {
-        if(confirm(`Delete asset ${asset.shortcode}?`)) {
+      row.querySelector('.gf-del-btn').addEventListener('click', async () => {
+        if(confirm(`Delete media [${asset.shortcode}]?`)) {
           await window.GeminiFlowDB.deleteAsset(asset.shortcode);
+          this.logTerm(`SYS: Deleted media [${asset.shortcode}]`, "warn");
           this.refreshAssetsList();
         }
-      };
+      });
 
-      btnContainer.appendChild(insertBtn);
-      btnContainer.appendChild(delBtn);
-
-      li.appendChild(label);
-      li.appendChild(btnContainer);
-      list.appendChild(li);
+      list.appendChild(row);
     });
   }
 
   async refreshFlowsList() {
     const flows = await window.GeminiFlowDB.getAllFlows();
 
-    // Refresh dropdown in Exec Tab
-    const select = this.container.querySelector('#gf-flow-select');
-    select.innerHTML = '<option value="">Select a flow...</option>';
+    const select = this.shadow.querySelector('#gf-flow-select');
+    select.innerHTML = '<option value="">SELECT SEQUENCE TO RENDER...</option>';
 
-    // Refresh list in Flows Tab
-    const list = this.container.querySelector('#gf-flow-list');
+    const list = this.shadow.querySelector('#gf-flow-list');
     if(list) list.innerHTML = '';
 
     flows.forEach(flow => {
-      // Add to dropdown
       const option = document.createElement('option');
       option.value = flow.id;
       option.innerText = flow.name;
       select.appendChild(option);
 
-      // Add to manager list
       if(list) {
-        const li = document.createElement('li');
-        li.style.display = 'flex';
-        li.style.justifyContent = 'space-between';
-        li.style.padding = '4px 0';
-        li.style.borderBottom = '1px solid #eee';
-        li.innerText = flow.name;
+        const row = document.createElement('div');
+        row.className = 'media-row';
+        row.innerHTML = `
+          <div class="media-info">
+             <div><span style="color:#FFF; font-weight:bold; font-size:11px;">${flow.name}</span></div>
+             <div class="media-filename">${flow.steps.length} Clips Total</div>
+          </div>
+          <button class="btn-micro red gf-del-flow-btn">TRASH</button>
+        `;
 
-        const delBtn = document.createElement('button');
-        delBtn.innerText = 'Del';
-        delBtn.style.background = '#ea4335';
-        delBtn.style.color = 'white';
-        delBtn.style.border = 'none';
-        delBtn.style.borderRadius = '3px';
-        delBtn.style.padding = '2px 6px';
-        delBtn.onclick = async () => {
-          if(confirm(`Delete flow "${flow.name}"?`)) {
+        row.querySelector('.gf-del-flow-btn').addEventListener('click', async () => {
+          if(confirm(`Delete sequence "${flow.name}"?`)) {
             await window.GeminiFlowDB.deleteFlow(flow.id);
+            this.logTerm(`SYS: Dropped sequence [${flow.name}]`, "warn");
             this.refreshFlowsList();
           }
-        };
-        li.appendChild(delBtn);
-        list.appendChild(li);
+        });
+        list.appendChild(row);
       }
     });
 
-    // Trigger change event to update "Run" tab button states based on new options
     select.dispatchEvent(new Event('change'));
   }
 
   makeDraggable() {
-    const header = this.container.querySelector('#gf-header');
+    const header = this.shadow.querySelector('#gf-header');
 
     const onMouseMove = (e) => {
       if (!this.isDragging) return;
-
       const deltaX = e.clientX - this.dragStartX;
       const deltaY = e.clientY - this.dragStartY;
 
-      const rect = this.container.getBoundingClientRect();
-      this.container.style.left = rect.left + deltaX + 'px';
-      this.container.style.top = rect.top + deltaY + 'px';
-      this.container.style.right = 'auto'; // Reset right positioning
-      this.container.style.bottom = 'auto'; // Reset bottom positioning
+      const rect = this.hostContainer.getBoundingClientRect();
+      this.hostContainer.style.left = rect.left + deltaX + 'px';
+      this.hostContainer.style.top = rect.top + deltaY + 'px';
+      this.hostContainer.style.right = 'auto';
+      this.hostContainer.style.bottom = 'auto';
 
       this.dragStartX = e.clientX;
       this.dragStartY = e.clientY;
@@ -386,29 +839,14 @@ class GeminiFlowUI {
     });
   }
 
-  updateStatus(statusText, stepText = null, countdown = null) {
-    if (statusText !== null) {
-      this.container.querySelector('#gf-status-text').innerText = `Status: ${statusText}`;
-    }
-    if (stepText !== null) {
-      this.container.querySelector('#gf-step-text').innerText = `Step: ${stepText}`;
-    }
-    const cdEl = this.container.querySelector('#gf-countdown');
-    if (countdown !== null) {
-      cdEl.innerText = `Wait: ${countdown}s`;
-      cdEl.style.display = 'block';
-    } else {
-      cdEl.style.display = 'none';
-    }
-  }
-
   setRunningState(isRunning) {
-    this.container.querySelector('#gf-start-btn').disabled = isRunning;
-    this.container.querySelector('#gf-pause-btn').disabled = !isRunning;
-    this.container.querySelector('#gf-stop-btn').disabled = !isRunning;
-    this.container.querySelector('#gf-skip-btn').disabled = !isRunning;
-    this.container.querySelector('#gf-flow-select').disabled = isRunning;
+    this.shadow.querySelector('#gf-start-btn').disabled = isRunning;
+    this.shadow.querySelector('#gf-pause-btn').disabled = !isRunning;
+    this.shadow.querySelector('#gf-stop-btn').disabled = !isRunning;
+    this.shadow.querySelector('#gf-skip-btn').disabled = !isRunning;
+    this.shadow.querySelector('#gf-flow-select').disabled = isRunning;
   }
 }
 
+// Attach globally
 window.GeminiFlowUI = GeminiFlowUI;

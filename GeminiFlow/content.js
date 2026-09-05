@@ -24,7 +24,7 @@ class GeminiFlowOrchestrator {
   async startFlow(flowId) {
     this.currentFlow = await this.db.getFlow(flowId);
     if (!this.currentFlow || !this.currentFlow.steps || this.currentFlow.steps.length === 0) {
-      alert("Invalid flow or no steps found.");
+      this.ui.logTerm("ERR: Invalid sequence or empty timeline", "err");
       return;
     }
 
@@ -33,13 +33,17 @@ class GeminiFlowOrchestrator {
     this.isPaused = false;
     this.ui.setRunningState(true);
 
+    this.ui.logTerm(`SYS: Engine Start -> ${this.currentFlow.name}`, "sys");
     this.executeStep();
   }
 
   pauseFlow() {
     this.isPaused = !this.isPaused;
-    this.ui.container.querySelector('#gf-pause-btn').innerText = this.isPaused ? "Resume" : "Pause";
-    this.ui.updateStatus(this.isPaused ? "Paused" : "Running");
+    const btn = this.ui.shadow.querySelector('#gf-pause-btn');
+    btn.innerText = this.isPaused ? "RESUME" : "HOLD";
+    btn.style.background = this.isPaused ? "rgba(255, 158, 69, 0.2)" : "transparent";
+
+    this.ui.logTerm(`SYS: Engine ${this.isPaused ? 'Holding...' : 'Resumed'}`, "warn");
     if (!this.isPaused) {
       // If we resumed while waiting for delay, we should just let the timer finish or continue
       // For simplicity, we just unpause. The execution loop checks `this.isPaused`.
@@ -52,7 +56,7 @@ class GeminiFlowOrchestrator {
     this.isPaused = false;
     if (this.delayTimer) clearTimeout(this.delayTimer);
     this.ui.setRunningState(false);
-    this.ui.updateStatus("Stopped", "-", null);
+    this.ui.logTerm("SYS: Sequence Aborted", "err");
     this.dom.stopDetection();
   }
 
@@ -74,14 +78,16 @@ class GeminiFlowOrchestrator {
     if (!this.isRunning) return;
 
     if (this.currentStepIndex >= this.currentFlow.steps.length) {
-      this.ui.updateStatus("Flow Complete!", "-", null);
+      this.ui.logTerm("SYS: MASTER SEQUENCE COMPLETE", "sys");
       this.ui.setRunningState(false);
       this.isRunning = false;
+      this.ui.updateTracker(0, this.currentFlow.steps.length, "IDLE");
       return;
     }
 
     const step = this.currentFlow.steps[this.currentStepIndex];
-    this.ui.updateStatus("Injecting Prompt", `${this.currentStepIndex + 1} of ${this.currentFlow.steps.length}`, null);
+    this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "RUNNING");
+    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Loading into engine buffer...`);
 
     // 1. Process prompt for shortcodes
     let promptText = step.prompt;
@@ -98,12 +104,12 @@ class GeminiFlowOrchestrator {
     }
 
     // 2. Inject text
-    this.ui.updateStatus("Typing...", null, null);
+    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Injecting screenplay data...`);
     await this.dom.injectText(promptText);
 
     // 3. Inject images
     if (assetsToInject.length > 0) {
-      this.ui.updateStatus("Injecting Images...", null, null);
+      this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Injecting ${assetsToInject.length} visual keyframes...`);
       for (const asset of assetsToInject) {
          await this.dom.injectImage(asset.blob, asset.filename);
       }
@@ -116,19 +122,22 @@ class GeminiFlowOrchestrator {
     }
 
     // 4. Send
-    this.ui.updateStatus("Sending...", null, null);
+    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Engaging Neural Network...`);
     await this.dom.clickSend();
 
     // 5. Wait for generation
-    this.ui.updateStatus("Generating...", null, null);
+    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Awaiting frame generation...`);
     const success = await this.dom.waitForGeneration();
     if (!success) {
       if(!this.isRunning) return; // Stopped
-      console.warn("Generation detection failed or timed out.");
+      this.ui.logTerm(`ERR: Generation Timeout`, "err");
+    } else {
+      this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Generation Complete.`, "sys");
     }
 
     // 6. Extract & Package
-    this.ui.updateStatus("Extracting Images...", null, null);
+    this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "ZIPPING");
+    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Extracting Master Plates...`);
     await this.extractAndPackageImages(this.currentStepIndex + 1);
 
     // 7. Delay before next step
@@ -145,7 +154,6 @@ class GeminiFlowOrchestrator {
 
   async waitWithCountdown(ms) {
     let remaining = Math.ceil(ms / 1000);
-    this.ui.updateStatus("Waiting...", null, remaining);
 
     return new Promise(resolve => {
       const tick = () => {
@@ -160,10 +168,12 @@ class GeminiFlowOrchestrator {
 
         remaining--;
         if (remaining <= 0) {
-          this.ui.updateStatus("Waiting...", null, null);
           resolve();
         } else {
-          this.ui.updateStatus("Waiting...", null, remaining);
+          // Log a subtle wait tick occasionally so terminal doesn't spam too hard
+          if (remaining % 2 === 0) {
+             this.ui.logTerm(`SYS: Engine Cooldown [${remaining}s]...`);
+          }
           this.delayTimer = setTimeout(tick, 1000);
         }
       };
@@ -200,11 +210,11 @@ class GeminiFlowOrchestrator {
     });
 
     if (imageUrls.length === 0) {
-      console.log("No generated images found in this step.");
+      this.ui.logTerm(`ERR: No render nodes detected in DOM.`, "err");
       return;
     }
 
-    this.ui.updateStatus(`Downloading ${imageUrls.length} images...`, null, null);
+    this.ui.logTerm(`[EXPORT] Assembling ${imageUrls.length} frame(s) into Master Zip...`);
 
     const zip = new JSZip();
 
@@ -223,7 +233,7 @@ class GeminiFlowOrchestrator {
       }
     }
 
-    this.ui.updateStatus("Zipping...", null, null);
+    this.ui.logTerm(`[EXPORT] Flushing buffer to local disk...`);
     const zipBlob = await zip.generateAsync({type: "blob"});
     const objectUrl = URL.createObjectURL(zipBlob);
 
