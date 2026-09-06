@@ -135,6 +135,13 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     if (!this.isRunning) return;
 
     if (this.currentStepIndex >= this.currentFlow.steps.length) {
+      if (this.sequenceAssets.length === 0) {
+        this.ui.logTerm("ERR: Secuencia abortada. No se generaron imágenes válidas.", "err");
+        this.ui.stopTimer();
+        this.ui.setRunningState(false);
+        this.isRunning = false;
+        return;
+      }
       this.ui.logTerm("SYS: SECUENCIA MAESTRA COMPLETADA", "sys");
       await this.packageFullSequence();
       this.ui.stopTimer();
@@ -150,9 +157,17 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     // 1. Process prompt for shortcodes and inject Anti-Mutation Protocol
     let promptText = step.prompt;
 
-    // Enforce single-frame output natively for Gemini image generation
-    const singleFrameEnforcer = "SINGLE CINEMATIC SHOT. Full bleed frame, zero panels, zero borders, zero split-screen, zero collage, zero storyboard layout. ";
-    if (!promptText.includes("SINGLE CINEMATIC SHOT")) {
+    // Strip Midjourney/Stable Diffusion specific flags to prevent Gemini from thinking it's a prompt engineering request
+    promptText = promptText.replace(/--ar\s+[0-9:]+/g, '')
+                           .replace(/--v\s+[0-9.]+/g, '')
+                           .replace(/--no\s+[a-zA-Z0-9,\s]+/g, '')
+                           .replace(/--style\s+[a-zA-Z0-9_-]+/g, '')
+                           .replace(/::[0-9.]+/g, '')
+                           .trim();
+
+    // Enforce single-frame output natively for Gemini image generation with an explicit imperative command
+    const singleFrameEnforcer = "Genera una imagen: SINGLE CINEMATIC SHOT. Full bleed frame, zero panels, zero borders, zero split-screen, zero collage, zero storyboard layout. ";
+    if (!promptText.includes("Genera una imagen:") && !promptText.includes("SINGLE CINEMATIC SHOT")) {
       promptText = singleFrameEnforcer + promptText;
     }
 
@@ -199,12 +214,27 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
 
     // 5. Wait for generation
     this.ui.logTerm(`Esperando generación de fotograma...`);
-    const success = await this.dom.waitForGeneration();
+    let success = await this.dom.waitForGeneration();
     if (!success) {
       if(!this.isRunning) return; // Stopped
       this.ui.logTerm(`ERR: Tiempo de espera agotado`, "err");
     } else {
-      this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Generación completada.`, "sys");
+      // 5b. Verify if Gemini dumped text instead of an image
+      if (!this.dom.hasGeneratedImage() && this.dom.hasTextCodeblockResponse()) {
+        this.ui.logTerm(`[ALERTA] Gemini devolvió texto en vez de imagen. Reintentando con comando imperativo forzado...`, "warn");
+        const retryPrompt = "Por favor crea la imagen ahora mismo usando tu herramienta visual, no escribas texto.";
+        await this.dom.injectText(retryPrompt);
+        await this.dom.clickSend();
+        this.ui.logTerm(`Esperando generación de fotograma (Reintento)...`);
+        success = await this.dom.waitForGeneration();
+        if (!success && this.isRunning) {
+           this.ui.logTerm(`ERR: Tiempo de espera agotado en reintento`, "err");
+        } else {
+           this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Generación de reintento completada.`, "sys");
+        }
+      } else {
+        this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Generación completada.`, "sys");
+      }
     }
 
     // 6. Extract & Queue Image

@@ -147,6 +147,31 @@ class GeminiFlowDOMActions {
     });
   }
 
+  hasGeneratedImage() {
+    const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"]');
+    if (containers.length > 0) {
+      const last = containers[containers.length - 1];
+      const imgs = last.querySelectorAll('img[src*="googleusercontent.com"]:not([src*="avatar"])');
+      for (let i = 0; i < imgs.length; i++) {
+         if (imgs[i].complete && imgs[i].naturalWidth > 300) {
+           return true;
+         }
+      }
+    }
+    return false;
+  }
+
+  hasTextCodeblockResponse() {
+    const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"]');
+    if (containers.length > 0) {
+      const last = containers[containers.length - 1];
+      // Check for codeblocks or significant text blocks without images
+      const codeblocks = last.querySelectorAll('pre, code');
+      if (codeblocks.length > 0) return true;
+    }
+    return false;
+  }
+
   async waitForGeneration() {
     // Enforce a mandatory minimum sleep at the start to ensure the DOM has time
     // to transition out of input mode and into generation/streaming mode.
@@ -171,16 +196,9 @@ class GeminiFlowDOMActions {
           generationStarted = true;
         } else {
           // Verify if a generated image already securely mounted in the newest response
-          const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"]');
-          if (containers.length > 0) {
-            const last = containers[containers.length - 1];
-            const imgs = last.querySelectorAll('img[src*="googleusercontent.com"]:not([src*="avatar"])');
-            for (let i = 0; i < imgs.length; i++) {
-               if (imgs[i].complete && imgs[i].naturalWidth > 300) {
-                 clearInterval(checkInterval);
-                 return resolve(true); // Image explicitly generated, fast exit
-               }
-            }
+          if (this.hasGeneratedImage()) {
+             clearInterval(checkInterval);
+             return resolve(true); // Image explicitly generated, fast exit
           }
 
           // Fallback verify the Send Button state
