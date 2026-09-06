@@ -81,21 +81,44 @@ class GeminiFlowDOMActions {
   }
 
   async configureVideoSettings() {
-    // Ensure we are targeting Video generation rather than an image editing engine (like Nano Banana Pro)
-    // Attempt to locate formatting pill "Video" or "Gemini Omni" and force 10s if available
-    const configPill = document.querySelector('button[aria-label*="Video"], div[role="button"][aria-label*="Video"], button[aria-label*="Gemini Omni"], div[role="button"][aria-label*="Gemini Omni"]');
+    // Attempt to locate formatting pill to force Video mode
+    const configPill = document.querySelector('button[aria-label*="Video"], div[role="button"][aria-label*="Video"], button[aria-label*="Imagen"], button[aria-label*="Image"]');
     if (configPill) {
       configPill.click();
       await new Promise(r => setTimeout(r, 500));
       const items = document.querySelectorAll('li, div');
-      const tenSecBtn = Array.from(items).find(el => el.textContent.trim() === '10s' || el.textContent.trim().toLowerCase().includes('video'));
-      if (tenSecBtn) {
-         tenSecBtn.click();
+
+      // Force "Video" if currently on "Imagen"
+      const videoBtn = Array.from(items).find(el => {
+        const text = el.textContent.trim().toLowerCase();
+        return text === 'vídeo' || text === 'video' || text.includes('video · 720p');
+      });
+      if (videoBtn) videoBtn.click();
+      await new Promise(r => setTimeout(r, 500));
+
+      // Force 10s if setting is available
+      const durationBtn = Array.from(document.querySelectorAll('li, div')).find(el => el.textContent.trim() === '10s');
+      if (durationBtn) {
+         durationBtn.click();
       } else {
-         // Close menu if not found
-         document.body.click();
+         document.body.click(); // close menu
       }
       await new Promise(r => setTimeout(r, 500));
+    }
+
+    // Toggle Agente mode ON if available in the UI
+    const toggleButtons = document.querySelectorAll('button[role="switch"], div[role="switch"]');
+    const agentToggle = Array.from(toggleButtons).find(el => {
+       const label = (el.getAttribute('aria-label') || '').toLowerCase();
+       return label.includes('agente') || label.includes('agent');
+    });
+
+    if (agentToggle) {
+       const isOn = agentToggle.getAttribute('aria-checked') === 'true';
+       if (!isOn) {
+          agentToggle.click();
+          await new Promise(r => setTimeout(r, 300));
+       }
     }
   }
 
@@ -198,35 +221,43 @@ class GeminiFlowDOMActions {
   }
 
   async injectFile(file) {
-    const editor = this.getEditor();
-    if (!editor) {
-      console.warn("DOM Action: Target input element not found for file injection");
-      return false;
-    }
-
-    editor.focus();
-
-    // Create DataTransfer (fresh instance per injection avoids duplication)
-    const dt = new DataTransfer();
-    dt.items.clear();
-    dt.items.add(file);
-
-    // Create paste event
-    const pasteEvent = new ClipboardEvent("paste", {
-      bubbles: true,
-      cancelable: true,
-      clipboardData: dt
+    // In Google Flow, we bypass Clipboard paste and natively inject into the hidden file input
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    const targetInput = Array.from(fileInputs).find(input => {
+       const accept = input.getAttribute('accept') || '';
+       return accept.includes('image') || accept.includes('video') || input.style.display === 'none';
     });
 
-    // Dispatch to editor
-    editor.dispatchEvent(pasteEvent);
+    if (targetInput) {
+       // Create DataTransfer
+       const dt = new DataTransfer();
+       dt.items.add(file);
 
-    // Wait for the thumbnail preview to appear (heuristic)
-    await this.waitForThumbnail();
+       // Assign to native input and dispatch change
+       targetInput.files = dt.files;
+       targetInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Add a tiny buffer so Gemini's React state processes the file before moving to the next
-    await new Promise(r => setTimeout(r, 1500));
-    return true;
+       // Wait for the thumbnail preview to appear (heuristic)
+       await this.waitForThumbnail();
+       await new Promise(r => setTimeout(r, 1500));
+       return true;
+    } else {
+       console.warn("DOM Action: Google Flow file input not found. Falling back to paste simulation.");
+
+       const editor = this.getEditor();
+       if (!editor) return false;
+
+       editor.focus();
+       const dt = new DataTransfer();
+       dt.items.add(file);
+
+       const pasteEvent = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt });
+       editor.dispatchEvent(pasteEvent);
+
+       await this.waitForThumbnail();
+       await new Promise(r => setTimeout(r, 1500));
+       return true;
+    }
   }
 
   async waitForThumbnail() {

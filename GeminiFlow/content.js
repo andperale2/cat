@@ -223,16 +223,17 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
                            .replace(/::[0-9.]+/g, '')
                            .trim();
 
-    // Apply Zero-Aggression Cinema Vocabulary Engine & Lore Scrubber
-    promptText = promptText.replace(/\b(attack|attacks|strike|strikes|beat)\b/gi, 'kinetic physical choreography')
-                           .replace(/\b(blows|punch|kick|hit)\b/gi, 'synchronized stance shift')
-                           .replace(/\b(battle|fight|combat)\b/gi, 'high-intensity cinematic sequence')
-                           .replace(/\b(parry|block|defense)\b/gi, 'poised intercepting posture')
-                           .replace(/\b(collision|impact burst|blast)\b/gi, 'kinetic visual flare')
+    // Apply Zero-Aggression Cinema Vocabulary Engine & Strict Lore Scrubber
+    promptText = promptText.replace(/\b(attack|attacks|strike|strikes|beat)\b/gi, 'high-speed martial choreography')
+                           .replace(/\b(blows|punch|kick|hit)\b/gi, 'dynamic camera tracking')
+                           .replace(/\b(battle|fight|combat)\b/gi, '35mm live-action film aesthetic')
+                           .replace(/\b(parry|block|defense)\b/gi, 'rapid defensive block')
+                           .replace(/\b(collision|impact burst|blast)\b/gi, 'dramatic stadium lighting')
                            .replace(/\b(gore|bloody|visceral|mutant|mutilated)\b/gi, '')
-                           .replace(/\b(todoroki)\b/gi, 'athletic male subject with dual-toned crimson and white hair, dark tournament tactical suit')
-                           .replace(/\b(deku|midoriya)\b/gi, 'athletic male subject with dark green curly hair, green utility combat suit')
-                           .replace(/\b(my hero academia|boku no hero)\b/gi, 'cinematic live-action anime adaptation');
+                           .replace(/\b(todoroki)\b/gi, 'athletic male subject with dual-toned crimson and white hair, dressed in a dark tournament uniform')
+                           .replace(/\b(deku|midoriya)\b/gi, 'athletic male subject with dark curly hair and green utility apparel')
+                           .replace(/\b(bakugo|goku|naruto)\b/gi, 'athletic male subject in stylized tactical wear')
+                           .replace(/\b(my hero academia|boku no hero|dragon ball|naruto shippuden)\b/gi, 'cinematic live-action adaptation');
 
     // Concise Enforcer and Guardrails to avoid Safety filter truncations
     const singleFrameEnforcer = "Genera una imagen: ";
