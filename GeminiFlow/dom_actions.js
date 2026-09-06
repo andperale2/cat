@@ -51,17 +51,19 @@ class GeminiFlowDOMActions {
   }
 
   async injectImage(blob, filename) {
+    const file = new File([blob], filename || "ref.png", { type: blob.type || "image/png" });
+    await this.injectFile(file);
+  }
+
+  async injectFile(file) {
     const editor = this.getEditor();
-    if (!editor) throw new Error("Could not find prompt editor for image injection");
+    if (!editor) throw new Error("Could not find prompt editor for file injection");
 
     editor.focus();
 
-    // Create a File object from the blob
-    const file = new File([blob], filename || "ref.png", { type: blob.type || "image/png" });
-
     // Create DataTransfer (fresh instance per injection avoids duplication)
     const dt = new DataTransfer();
-    dt.items.clear(); // Explicit clear just in case
+    dt.items.clear();
     dt.items.add(file);
 
     // Create paste event
@@ -78,7 +80,7 @@ class GeminiFlowDOMActions {
     await this.waitForThumbnail();
 
     // Add a tiny buffer so Gemini's React state processes the file before moving to the next
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1500));
   }
 
   async waitForThumbnail() {
@@ -89,8 +91,8 @@ class GeminiFlowDOMActions {
       let attempts = 0;
       const interval = setInterval(() => {
         attempts++;
-        // Looking for close buttons or generic image thumbnails in the prompt bar
-        const thumbnails = document.querySelectorAll('button[aria-label*="Remove image"], img[src^="blob:"]');
+        // Looking for close buttons or generic image/video thumbnails in the prompt bar
+        const thumbnails = document.querySelectorAll('button[aria-label*="Remove image"], button[aria-label*="Quitar"], img[src^="blob:"], video[src^="blob:"]');
         if (thumbnails.length > 0 || attempts > 20) {
           clearInterval(interval);
           resolve(); // Resolve anyway after 5s to avoid complete stall

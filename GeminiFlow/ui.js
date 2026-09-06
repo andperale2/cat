@@ -182,6 +182,12 @@ class GeminiFlowUI {
       }
       .dropzone-label { color: #54C8D8; font-weight: 600; margin-bottom: 10px; }
 
+      .dropzone.director {
+        border-color: #FF9E45;
+        background: rgba(255, 158, 69, 0.05);
+      }
+      .dropzone.director .dropzone-label { color: #FF9E45; }
+
       /* Media Row (Assets) */
       .media-row {
         background: #161B22;
@@ -395,6 +401,18 @@ class GeminiFlowUI {
           <div class="panel-body">
             <!-- TAB: MEDIA POOL -->
             <div id="gf-assets" class="gf-tab-content" style="display: none;">
+
+              <!-- Director Analyzer -->
+              <div class="dropzone director">
+                <div class="dropzone-label">ANÁLISIS DE VIDEO (DIRECTOR / PRODUCTOR IA)</div>
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+                  <input type="file" id="gf-video-director-input" accept="video/mp4,video/webm,video/quicktime" style="font-size:10px; width:100%;">
+                  <div id="gf-video-metadata" style="color:#8B949E; font-size:10px; text-align:center; height:12px;"></div>
+                  <button id="gf-analyze-video-btn" class="btn-master" style="background:#FF9E45; color:#000; width:100%; margin:0; padding:8px;" disabled>ANALIZAR CLIP CON GEMINI</button>
+                </div>
+              </div>
+
+              <!-- Media Upload -->
               <div class="dropzone">
                 <div class="dropzone-label">Arrastra aquí tus fotogramas o fichas de personaje</div>
                 <div style="display:flex; gap:8px;">
@@ -554,6 +572,54 @@ class GeminiFlowUI {
   // --- We will append the rest of the ui.js functionality in the next step ---
 
   bindEvents() {
+    // Video Analyzer
+    const vidInput = this.shadow.querySelector('#gf-video-director-input');
+    const analyzeBtn = this.shadow.querySelector('#gf-analyze-video-btn');
+    const metaLabel = this.shadow.querySelector('#gf-video-metadata');
+
+    vidInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+         analyzeBtn.disabled = true;
+         metaLabel.innerText = '';
+         return;
+      }
+
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+         URL.revokeObjectURL(video.src);
+         const dur = video.duration.toFixed(1);
+         if (video.duration > 15) {
+            metaLabel.innerHTML = `<span style="color:#FF4D4D;">ADVERTENCIA: ${dur}s exceden límite de 15s | ${sizeMB} MB</span>`;
+         } else {
+            metaLabel.innerHTML = `Clip válido: ${dur}s | ${sizeMB} MB`;
+         }
+         analyzeBtn.disabled = false;
+      };
+      video.src = URL.createObjectURL(file);
+    });
+
+    analyzeBtn.addEventListener('click', () => {
+       const file = vidInput.files[0];
+       if (file && this.callbacks.onAnalyzeVideo) {
+          analyzeBtn.innerText = "ANALIZANDO...";
+          analyzeBtn.disabled = true;
+          // Add pulse animation roughly
+          analyzeBtn.style.animation = "pulse 1.5s infinite";
+          this.callbacks.onAnalyzeVideo(file);
+
+          setTimeout(() => {
+             analyzeBtn.innerText = "ANALIZAR CLIP CON GEMINI";
+             analyzeBtn.disabled = false;
+             analyzeBtn.style.animation = "";
+             vidInput.value = '';
+             metaLabel.innerText = '';
+          }, 4000); // Visual reset buffer
+       }
+    });
+
     // Switcher Tabs
     const tabs = this.shadow.querySelectorAll('.tab-btn');
     tabs.forEach(tab => {

@@ -23,6 +23,47 @@ class GeminiFlowOrchestrator {
     this.ui.callbacks.onPauseFlow = this.pauseFlow.bind(this);
     this.ui.callbacks.onStopFlow = this.stopFlow.bind(this);
     this.ui.callbacks.onSkipStep = this.skipStep.bind(this);
+    this.ui.callbacks.onAnalyzeVideo = this.analyzeVideo.bind(this);
+  }
+
+  async analyzeVideo(videoFile) {
+    this.ui.logTerm("SYS: Iniciando Análisis de Director...", "sys");
+
+    // Inject the video file into Gemini's input bar
+    try {
+      await this.dom.injectFile(videoFile);
+      this.ui.logTerm("Clip de video cargado en el prompt.");
+    } catch (e) {
+      this.ui.logTerm("ERR: Falló la inyección del video", "err");
+      return;
+    }
+
+    // Inject the rigid Director breakdown prompt
+    const directorPrompt = `Actúa como un Director de Fotografía y Productor Técnico de Cine de clase mundial (especialista en adaptación Live-Action 35mm estilo Alter Anime Studio).
+Analiza meticulosamente este clip de video de referencia. NO inventes acciones, personajes ni poderes que no ocurran en el clip.
+
+Realiza un desglose cronológico exacto cuadro a cuadro:
+1. LISTA DE ENTIDADES:
+   - @1: Personaje A (rol y vestuario exacto)
+   - @2: Personaje B (rol y vestuario exacto)
+   - @ARENA: Escenario / entorno con iluminación física real.
+
+2. DESGLOSE TÉCNICO DE PLANOS (Timecodes exactos 0-2s, 2-4s, etc.):
+   - Tipo de plano (primer plano, plano medio, picado, tracking).
+   - Movimiento exacto de cámara (handheld sutil, órbita, whip-pan, push-in).
+   - Gestos y microexpresiones reales de los actores (mirada, parpadeo, tensión muscular).
+   - Coreografía física (dirección exacta de golpes, bloqueos, trayectoria de pies).
+   - Física de efectos (cuándo aparece y desaparece exactamente el hielo/energía, sin efectos permanentes).
+
+3. GUION TÉCNICO LISTO PARA EJECUCIÓN:
+   Entrega los prompts estructurados listos para replicar este clip exacto en imagen fotorrealista y secuencia de video.`;
+
+    await this.dom.injectText(directorPrompt);
+    this.ui.logTerm("Prompt de Director IA inyectado.");
+
+    // Execute send
+    this.ui.logTerm("Solicitando desglose técnico a Gemini...");
+    await this.dom.clickSend();
   }
 
   async startFlow(flowId) {
