@@ -5,6 +5,29 @@ class GeminiFlowDOMActions {
     this.observer = null;
   }
 
+  async prepareCanvas() {
+    // Check if we are currently stuck in an editing/modification view instead of the root creation view
+    const textareas = document.querySelectorAll('textarea');
+    const isEditMode = Array.from(textareas).some(ta => {
+      const label = ta.getAttribute('aria-label') || '';
+      return label.toLowerCase().includes('cambiar') || label.toLowerCase().includes('change');
+    });
+
+    if (isEditMode) {
+      // Find the "+" or "Nuevo" button to escape edit mode
+      const buttons = document.querySelectorAll('button, div[role="button"]');
+      const resetBtn = Array.from(buttons).find(el => {
+         const txt = el.textContent.trim().toLowerCase();
+         const label = (el.getAttribute('aria-label') || '').toLowerCase();
+         return txt === 'nuevo' || txt === 'new' || label.includes('nuevo') || label.includes('new');
+      });
+      if (resetBtn) {
+         resetBtn.click();
+         await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  }
+
   async bypassModal() {
     const buttons = document.querySelectorAll('button, div[role="button"]');
     const btn = Array.from(buttons).find(el => el.textContent.trim().includes('Entendido') || (el.getAttribute('aria-label') && el.getAttribute('aria-label').includes('Entendido')));
@@ -15,13 +38,14 @@ class GeminiFlowDOMActions {
   }
 
   async configureVideoSettings() {
-    // Attempt to locate formatting pill "Video · 720p · 8s" and force 10s if available
-    const configPill = document.querySelector('button[aria-label*="Video"], div[role="button"][aria-label*="Video"]');
+    // Ensure we are targeting Video generation rather than an image editing engine (like Nano Banana Pro)
+    // Attempt to locate formatting pill "Video" or "Gemini Omni" and force 10s if available
+    const configPill = document.querySelector('button[aria-label*="Video"], div[role="button"][aria-label*="Video"], button[aria-label*="Gemini Omni"], div[role="button"][aria-label*="Gemini Omni"]');
     if (configPill) {
       configPill.click();
       await new Promise(r => setTimeout(r, 500));
       const items = document.querySelectorAll('li, div');
-      const tenSecBtn = Array.from(items).find(el => el.textContent.trim() === '10s');
+      const tenSecBtn = Array.from(items).find(el => el.textContent.trim() === '10s' || el.textContent.trim().toLowerCase().includes('video'));
       if (tenSecBtn) {
          tenSecBtn.click();
       } else {
@@ -215,6 +239,18 @@ class GeminiFlowDOMActions {
       let checkInterval;
 
       const checkState = () => {
+        // Handle native platform error cards (Safety rejections, network drops)
+        const errorNodes = document.querySelectorAll('div, span, p');
+        const hasError = Array.from(errorNodes).some(el => {
+          const txt = el.textContent.trim().toLowerCase();
+          return txt.includes('no se pudo completar la acción') || txt.includes('no se pudo generar la imagen');
+        });
+
+        if (hasError) {
+           clearInterval(checkInterval);
+           return resolve("REJECTED");
+        }
+
         // Look for the "Stop generating" indicator
         let stopBtn = document.querySelector('button[aria-label*="Stop generating"], button[aria-label*="Detener"]');
         if (!stopBtn) {

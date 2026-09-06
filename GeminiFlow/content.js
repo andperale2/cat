@@ -154,10 +154,13 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "RUNNING");
     this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Cargando en búfer del motor...`);
 
+    // Escape modifier canvas if needed
+    await this.dom.prepareCanvas();
+
     // 1. Process prompt for shortcodes and inject Anti-Mutation Protocol
     let promptText = step.prompt;
 
-    // Strip Midjourney/Stable Diffusion specific flags to prevent Gemini from thinking it's a prompt engineering request
+    // Strip Midjourney/Stable Diffusion specific flags
     promptText = promptText.replace(/--ar\s+[0-9:]+/g, '')
                            .replace(/--v\s+[0-9.]+/g, '')
                            .replace(/--no\s+[a-zA-Z0-9,\s]+/g, '')
@@ -165,15 +168,14 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
                            .replace(/::[0-9.]+/g, '')
                            .trim();
 
-    // Enforce single-frame output natively for Gemini image generation with an explicit imperative command
-    const singleFrameEnforcer = "Genera una imagen: SINGLE CINEMATIC SHOT. Full bleed frame, zero panels, zero borders, zero split-screen, zero collage, zero storyboard layout. ";
-    if (!promptText.includes("Genera una imagen:") && !promptText.includes("SINGLE CINEMATIC SHOT")) {
+    // Concise Enforcer and Guardrails to avoid Safety filter truncations
+    const singleFrameEnforcer = "Genera una imagen: ";
+    if (!promptText.includes("Genera una imagen:")) {
       promptText = singleFrameEnforcer + promptText;
     }
 
-    // Inject Anatomical Guardrails non-negotiable anchors
-    const antiMutationStr = " Avoid: storyboard, contact sheet, comic panels, split screen, multiple frames, text overlays, timecode stamps, labels, subtitles, extra arms, third leg, floating limbs, duplicate head, fused hands, distorted spine, unnatural joints, anatomical glitches. Maintain static composed stance, feet planted on ground for all secondary characters.";
-    if (!promptText.includes("extra arms")) {
+    const antiMutationStr = " Avoid: comic panels, split screen, text, extra limbs, fused fingers, distorted anatomy.";
+    if (!promptText.includes("distorted anatomy")) {
       promptText += antiMutationStr;
     }
 
@@ -215,9 +217,31 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     // 5. Wait for generation
     this.ui.logTerm(`Esperando generación de fotograma...`);
     let success = await this.dom.waitForGeneration();
-    if (!success) {
+
+    // Check for native Google Flow rejection
+    if (success === "REJECTED") {
+        this.ui.logTerm(`[ALERTA] Google Flow rechazó la generación por filtros de seguridad. Simplificando prompt...`, "warn");
+
+        // Escape edit canvas if it threw us into one
+        await this.dom.prepareCanvas();
+
+        // Construct ultra-safe fallback
+        let fallbackPrompt = "Genera una imagen: Cinematic medium shot based strictly on the uploaded references. 35mm film grain, deep shadows, natural studio lighting. Avoid text and illustrations.";
+
+        // Re-inject identical assets
+        for (const asset of assetsToInject) {
+           await this.dom.injectImage(asset.blob, asset.filename);
+        }
+
+        await this.dom.injectText(fallbackPrompt);
+        await this.dom.clickSend();
+        this.ui.logTerm(`Esperando generación de fotograma (Fallback)...`);
+        success = await this.dom.waitForGeneration();
+    }
+
+    if (!success || success === "REJECTED") {
       if(!this.isRunning) return; // Stopped
-      this.ui.logTerm(`ERR: Tiempo de espera agotado`, "err");
+      this.ui.logTerm(`ERR: Fallo definitivo o tiempo de espera agotado`, "err");
     } else {
       // 5b. Verify if Gemini dumped text instead of an image
       if (!this.dom.hasGeneratedImage() && this.dom.hasTextCodeblockResponse()) {
