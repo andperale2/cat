@@ -109,8 +109,14 @@ class GeminiFlowOrchestrator {
     // 1. Process prompt for shortcodes and inject Anti-Mutation Protocol
     let promptText = step.prompt;
 
+    // Enforce single-frame output natively for Gemini image generation
+    const singleFrameEnforcer = "SINGLE CINEMATIC SHOT. Full bleed frame, zero panels, zero borders, zero split-screen, zero collage, zero storyboard layout. ";
+    if (!promptText.includes("SINGLE CINEMATIC SHOT")) {
+      promptText = singleFrameEnforcer + promptText;
+    }
+
     // Inject Anatomical Guardrails non-negotiable anchors
-    const antiMutationStr = " Avoid: extra arms, third leg, floating limbs, duplicate head, fused hands, distorted spine, unnatural joints, anatomical glitches. Maintain static composed stance, feet planted on ground for all secondary characters.";
+    const antiMutationStr = " Avoid: storyboard, contact sheet, comic panels, split screen, multiple frames, text overlays, timecode stamps, labels, subtitles, extra arms, third leg, floating limbs, duplicate head, fused hands, distorted spine, unnatural joints, anatomical glitches. Maintain static composed stance, feet planted on ground for all secondary characters.";
     if (!promptText.includes("extra arms")) {
       promptText += antiMutationStr;
     }
