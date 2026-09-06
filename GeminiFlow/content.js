@@ -24,6 +24,14 @@ class GeminiFlowOrchestrator {
     this.ui.callbacks.onStopFlow = this.stopFlow.bind(this);
     this.ui.callbacks.onSkipStep = this.skipStep.bind(this);
     this.ui.callbacks.onAnalyzeVideo = this.analyzeVideo.bind(this);
+    this.ui.callbacks.onManualAnchor = this.enableManualAnchor.bind(this);
+  }
+
+  enableManualAnchor() {
+    this.ui.logTerm("SYS: Haz clic en la barra de texto de Google Flow para anclarla.", "warn");
+    this.dom.enableManualAnchorMode((msg) => {
+       this.ui.logTerm(msg, "sys");
+    });
   }
 
   async analyzeVideo(videoFile) {

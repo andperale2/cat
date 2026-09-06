@@ -12,6 +12,8 @@ class GeminiFlowUI {
       onPauseFlow: null,
       onStopFlow: null,
       onSkipStep: null,
+      onAnalyzeVideo: null,
+      onManualAnchor: null
     };
 
     // Maintain state for asset URLs to revoke them
@@ -473,7 +475,10 @@ class GeminiFlowUI {
               </div>
 
               <div style="margin-top:15px;">
-                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">TERMINAL DEL SISTEMA</strong>
+                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                   <strong style="color:#8B949E; font-size:10px;">TERMINAL DEL SISTEMA</strong>
+                   <button id="gf-manual-anchor-btn" class="btn-micro" style="border-color:#FF9E45; color:#FF9E45;" title="Fuerza la selección manual de la barra de entrada de texto">[SELECCIONAR CAMPO MANUALMENTE]</button>
+                 </div>
                  <div class="terminal" id="gf-terminal">
                    <p class="term-sys">> Sistema listo.</p>
                  </div>
@@ -757,6 +762,13 @@ class GeminiFlowUI {
       } else {
         startBtn.disabled = true;
         this.updateTracker(0, 0, "IDLE");
+      }
+    });
+
+    // Manual Anchor
+    this.shadow.querySelector('#gf-manual-anchor-btn').addEventListener('click', () => {
+      if (this.callbacks.onManualAnchor) {
+         this.callbacks.onManualAnchor();
       }
     });
 

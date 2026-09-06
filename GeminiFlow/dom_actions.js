@@ -3,6 +3,35 @@
 class GeminiFlowDOMActions {
   constructor() {
     this.observer = null;
+    this.cachedEditor = null;
+  }
+
+  enableManualAnchorMode(callback) {
+    // Change cursor
+    document.body.style.cursor = 'crosshair';
+
+    const clickHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Look for closest likely input
+      const target = e.target.closest('textarea, div[contenteditable="true"], input[type="text"]');
+      if (target) {
+        this.cachedEditor = target;
+        callback(`[SYS] Campo anclado manualmente: ${target.tagName}`);
+      } else {
+        // Fallback to exactly what was clicked
+        this.cachedEditor = e.target;
+        callback(`[SYS] Elemento anclado manualmente: ${e.target.tagName}`);
+      }
+
+      // Cleanup
+      document.body.style.cursor = 'default';
+      document.removeEventListener('click', clickHandler, true);
+    };
+
+    // Use capture phase to intercept before native Google handlers
+    document.addEventListener('click', clickHandler, true);
   }
 
   async prepareCanvas() {
@@ -71,6 +100,8 @@ class GeminiFlowDOMActions {
   }
 
   getEditor() {
+    if (this.cachedEditor) return this.cachedEditor;
+
     // Google Flow / Gemini Input command bar
     return document.querySelector('textarea[placeholder*="crear"]') ||
            document.querySelector('textarea[placeholder*="create"]') ||
@@ -95,14 +126,16 @@ class GeminiFlowDOMActions {
       if (elapsed === 3000) {
          if (logCallback) logCallback(`[SYS] Esperando inicialización del lienzo de Google Flow...`);
 
-         const buttons = document.querySelectorAll('button, div[role="button"], a');
+         const buttons = document.querySelectorAll('button, div[role="button"], a, div');
          const initBtn = Array.from(buttons).find(el => {
             const txt = el.textContent.trim().toLowerCase();
-            return txt === 'nuevo elemento' || txt === 'crear clip' || txt === '+' || txt === 'nuevo';
+            const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+            return txt === 'nuevo elemento' || txt === 'crear clip' || txt === 'nuevo' || txt === 'start' || txt === 'añadir' || txt === 'multimedia' || txt === '+' || aria.includes('multimedia') || aria.includes('nuevo');
          });
 
          if (initBtn) {
             initBtn.click();
+            await new Promise(r => setTimeout(r, 1500)); // allow mount time after click
          }
       }
 
