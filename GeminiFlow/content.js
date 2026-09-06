@@ -157,6 +157,16 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     // Escape modifier canvas if needed
     await this.dom.prepareCanvas();
 
+    // Await primary canvas mount before processing
+    const isReady = await this.dom.waitForInputMount((msg) => this.ui.logTerm(msg, "warn"), 15000);
+    if (!isReady) {
+      this.ui.logTerm(`[ERR] No se encontró el área de entrada. Abre un lienzo activo en Google Flow.`, "err");
+      this.ui.stopTimer();
+      this.ui.setRunningState(false);
+      this.isRunning = false;
+      return;
+    }
+
     // 1. Process prompt for shortcodes and inject Anti-Mutation Protocol
     let promptText = step.prompt;
 

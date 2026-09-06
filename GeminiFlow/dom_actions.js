@@ -72,11 +72,45 @@ class GeminiFlowDOMActions {
 
   getEditor() {
     // Google Flow / Gemini Input command bar
-    return document.querySelector('div[contenteditable="true"]') ||
+    return document.querySelector('textarea[placeholder*="crear"]') ||
+           document.querySelector('textarea[placeholder*="create"]') ||
            document.querySelector('textarea[aria-label*="Qué quieres crear"]') ||
            document.querySelector('textarea[aria-label*="What do you want to create"]') ||
+           document.querySelector('input[type="text"][placeholder*="crear"]') ||
+           document.querySelector('[data-placeholder*="crear"]') ||
+           document.querySelector('div[contenteditable="true"]') ||
            document.querySelector('rich-textarea') ||
            document.querySelector('.ql-editor');
+  }
+
+  async waitForInputMount(logCallback, timeoutMs = 15000) {
+    let elapsed = 0;
+    const interval = 500;
+
+    while (elapsed < timeoutMs) {
+      const editor = this.getEditor();
+      if (editor) return true;
+
+      // If missing after 3 seconds, attempt to click initialization canvas triggers
+      if (elapsed === 3000) {
+         if (logCallback) logCallback(`[SYS] Esperando inicialización del lienzo de Google Flow...`);
+
+         const buttons = document.querySelectorAll('button, div[role="button"], a');
+         const initBtn = Array.from(buttons).find(el => {
+            const txt = el.textContent.trim().toLowerCase();
+            return txt === 'nuevo elemento' || txt === 'crear clip' || txt === '+' || txt === 'nuevo';
+         });
+
+         if (initBtn) {
+            initBtn.click();
+         }
+      }
+
+      await new Promise(r => setTimeout(r, interval));
+      elapsed += interval;
+    }
+
+    return false;
   }
 
   getSendButton() {
@@ -101,7 +135,10 @@ class GeminiFlowDOMActions {
 
   async injectText(text) {
     const editor = this.getEditor();
-    if (!editor) throw new Error("Could not find prompt editor");
+    if (!editor) {
+      console.warn("DOM Action: Target input element not found for text injection");
+      return false;
+    }
 
     editor.focus();
 
@@ -117,16 +154,20 @@ class GeminiFlowDOMActions {
     editor.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
 
     await new Promise(r => setTimeout(r, 200)); // Small delay for framework state to sync
+    return true;
   }
 
   async injectImage(blob, filename) {
     const file = new File([blob], filename || "ref.png", { type: blob.type || "image/png" });
-    await this.injectFile(file);
+    return await this.injectFile(file);
   }
 
   async injectFile(file) {
     const editor = this.getEditor();
-    if (!editor) throw new Error("Could not find prompt editor for file injection");
+    if (!editor) {
+      console.warn("DOM Action: Target input element not found for file injection");
+      return false;
+    }
 
     editor.focus();
 
@@ -150,6 +191,7 @@ class GeminiFlowDOMActions {
 
     // Add a tiny buffer so Gemini's React state processes the file before moving to the next
     await new Promise(r => setTimeout(r, 1500));
+    return true;
   }
 
   async waitForThumbnail() {
