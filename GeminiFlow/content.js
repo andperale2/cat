@@ -28,7 +28,7 @@ class GeminiFlowOrchestrator {
   async startFlow(flowId) {
     this.currentFlow = await this.db.getFlow(flowId);
     if (!this.currentFlow || !this.currentFlow.steps || this.currentFlow.steps.length === 0) {
-      this.ui.logTerm("ERR: Invalid sequence or empty timeline", "err");
+      this.ui.logTerm("ERR: Secuencia inválida o línea de tiempo vacía", "err");
       return;
     }
 
@@ -37,19 +37,28 @@ class GeminiFlowOrchestrator {
     this.isPaused = false;
     this.sequenceAssets = [];
     this.sequencePrompts = [];
-    this.ui.setRunningState(true);
 
-    this.ui.logTerm(`SYS: Engine Start -> ${this.currentFlow.name}`, "sys");
+    this.ui.setRunningState(true);
+    this.ui.resetTimer();
+    this.ui.startTimer();
+
+    this.ui.logTerm(`SYS: Motor Iniciado -> ${this.currentFlow.name}`, "sys");
     this.executeStep();
   }
 
   pauseFlow() {
     this.isPaused = !this.isPaused;
     const btn = this.ui.shadow.querySelector('#gf-pause-btn');
-    btn.innerText = this.isPaused ? "RESUME" : "HOLD";
+    btn.innerText = this.isPaused ? "CONTINUAR" : "PAUSAR";
     btn.style.background = this.isPaused ? "rgba(255, 158, 69, 0.2)" : "transparent";
 
-    this.ui.logTerm(`SYS: Engine ${this.isPaused ? 'Holding...' : 'Resumed'}`, "warn");
+    if (this.isPaused) {
+       this.ui.stopTimer();
+    } else {
+       this.ui.startTimer();
+    }
+
+    this.ui.logTerm(`SYS: Motor ${this.isPaused ? 'En Espera...' : 'Reanudado'}`, "warn");
     if (!this.isPaused) {
       // If we resumed while waiting for delay, we should just let the timer finish or continue
       // For simplicity, we just unpause. The execution loop checks `this.isPaused`.
@@ -62,7 +71,8 @@ class GeminiFlowOrchestrator {
     this.isPaused = false;
     if (this.delayTimer) clearTimeout(this.delayTimer);
     this.ui.setRunningState(false);
-    this.ui.logTerm("SYS: Sequence Aborted", "err");
+    this.ui.stopTimer();
+    this.ui.logTerm("SYS: Secuencia Cancelada", "err");
     this.dom.stopDetection();
   }
 
@@ -84,8 +94,9 @@ class GeminiFlowOrchestrator {
     if (!this.isRunning) return;
 
     if (this.currentStepIndex >= this.currentFlow.steps.length) {
-      this.ui.logTerm("SYS: MASTER SEQUENCE COMPLETE", "sys");
+      this.ui.logTerm("SYS: SECUENCIA MAESTRA COMPLETADA", "sys");
       await this.packageFullSequence();
+      this.ui.stopTimer();
       this.ui.setRunningState(false);
       this.isRunning = false;
       return;
@@ -93,7 +104,7 @@ class GeminiFlowOrchestrator {
 
     const step = this.currentFlow.steps[this.currentStepIndex];
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "RUNNING");
-    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Loading into engine buffer...`);
+    this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Cargando en búfer del motor...`);
 
     // 1. Process prompt for shortcodes and inject Anti-Mutation Protocol
     let promptText = step.prompt;
@@ -120,12 +131,12 @@ class GeminiFlowOrchestrator {
     }
 
     // 2. Inject text
-    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Injecting screenplay data...`);
+    this.ui.logTerm(`Inyectando datos de guion para [TOMA ${this.currentStepIndex+1}]...`);
     await this.dom.injectText(promptText);
 
     // 3. Inject images
     if (assetsToInject.length > 0) {
-      this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Injecting ${assetsToInject.length} visual keyframes...`);
+      this.ui.logTerm(`Subiendo referencia visual única (${assetsToInject.length} keyframes)...`);
       for (const asset of assetsToInject) {
          await this.dom.injectImage(asset.blob, asset.filename);
       }
@@ -138,22 +149,22 @@ class GeminiFlowOrchestrator {
     }
 
     // 4. Send
-    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Engaging Neural Network...`);
+    this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Activando Red Neuronal...`);
     await this.dom.clickSend();
 
     // 5. Wait for generation
-    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Awaiting frame generation...`);
+    this.ui.logTerm(`Esperando generación de fotograma...`);
     const success = await this.dom.waitForGeneration();
     if (!success) {
       if(!this.isRunning) return; // Stopped
-      this.ui.logTerm(`ERR: Generation Timeout`, "err");
+      this.ui.logTerm(`ERR: Tiempo de espera agotado`, "err");
     } else {
-      this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Generation Complete.`, "sys");
+      this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Generación completada.`, "sys");
     }
 
     // 6. Extract & Queue Image
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "ZIPPING");
-    this.ui.logTerm(`[CLIP ${this.currentStepIndex+1}] Extracting Master Plates...`);
+    this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Extrayendo fotogramas maestros...`);
     await this.extractAndQueueImages(this.currentStepIndex + 1, promptText);
 
     // 7. Delay before next step
@@ -188,7 +199,7 @@ class GeminiFlowOrchestrator {
         } else {
           // Log a subtle wait tick occasionally so terminal doesn't spam too hard
           if (remaining % 2 === 0) {
-             this.ui.logTerm(`SYS: Engine Cooldown [${remaining}s]...`);
+             this.ui.logTerm(`SYS: Enfriamiento de motor [${remaining}s]...`);
           }
           this.delayTimer = setTimeout(tick, 1000);
         }
@@ -201,7 +212,7 @@ class GeminiFlowOrchestrator {
     // Check multiple broad selectors to find the most recent bot response container
     const messageContainers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"], div.image-container');
     if (messageContainers.length === 0) {
-      this.ui.logTerm(`ERR: No response container detected for [CLIP ${stepNum}]`, "err");
+      this.ui.logTerm(`ERR: No se detectó contenedor de respuesta para [TOMA ${stepNum}]`, "err");
       return;
     }
 
@@ -247,11 +258,11 @@ class GeminiFlowOrchestrator {
     }
 
     if (imageUrls.length === 0) {
-      this.ui.logTerm(`ERR: No valid render nodes detected in DOM for [CLIP ${stepNum}]`, "err");
+      this.ui.logTerm(`ERR: No se detectaron nodos de renderización para [TOMA ${stepNum}]`, "err");
       return;
     }
 
-    this.ui.logTerm(`SYS: Scraped frame output for [CLIP ${stepNum}] (2048px)`);
+    this.ui.logTerm(`Fotograma capturado con éxito (2048px).`);
 
     this.sequencePrompts.push({
       step: stepNum,
@@ -270,21 +281,21 @@ class GeminiFlowOrchestrator {
         }
       } catch (err) {
         console.error("Failed to fetch image", url, err);
-        this.ui.logTerm(`ERR: Failed to queue image from step ${stepNum}`, "err");
+        this.ui.logTerm(`ERR: Falló extracción de imagen en paso ${stepNum}`, "err");
       }
     }
 
-    this.ui.logTerm(`SYS: Queued image for packaging (Total: ${this.sequenceAssets.length})`);
+    this.ui.logTerm(`SYS: Fotograma en cola para empaquetado (Total: ${this.sequenceAssets.length})`);
   }
 
   async packageFullSequence() {
     if (this.sequenceAssets.length === 0) {
-       this.ui.logTerm("ERR: No assets collected to package.", "err");
+       this.ui.logTerm("ERR: No se recolectaron fotogramas para empaquetar.", "err");
        this.ui.updateTracker(0, this.currentFlow.steps.length, "IDLE");
        return;
     }
 
-    this.ui.logTerm(`[EXPORT] Assembling full sequence into Master Zip...`);
+    this.ui.logTerm(`Generando archivo comprimido .ZIP...`);
     const zip = new JSZip();
 
     // Add images
@@ -295,7 +306,7 @@ class GeminiFlowOrchestrator {
     // Add metadata
     zip.file("sequence_metadata.json", JSON.stringify(this.sequencePrompts, null, 2));
 
-    this.ui.logTerm(`[EXPORT] Flushing complete sequence to local disk...`);
+    this.ui.logTerm(`[EXPORT] Escribiendo secuencia completa en disco local...`);
     const zipBlob = await zip.generateAsync({type: "blob"});
     const objectUrl = URL.createObjectURL(zipBlob);
 
@@ -311,7 +322,7 @@ class GeminiFlowOrchestrator {
       URL.revokeObjectURL(objectUrl);
     }, 10000);
 
-    this.ui.logTerm("STATUS: ALL ASSETS PACKAGED (ZIP READY)", "sys");
+    this.ui.logTerm("Secuencia completa descargada.", "sys");
     this.ui.updateTracker(this.currentFlow.steps.length - 1, this.currentFlow.steps.length, "IDLE");
   }
 

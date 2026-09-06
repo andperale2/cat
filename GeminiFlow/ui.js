@@ -376,9 +376,9 @@ class GeminiFlowUI {
         <div class="header-toolbar" id="gf-header">
           <div class="rec-indicator">
             <div class="rec-dot"></div>
-            AAS // ENGINE 2.0
+            ESTUDIO AAS // MOTOR 2.0
           </div>
-          <div class="timecode" id="tc-display">TC [00:00:00:00]</div>
+          <div class="timecode" id="tc-display">TC [00:00:00]</div>
           <div class="window-controls">
             <button id="gf-toggle-btn">_</button>
           </div>
@@ -387,48 +387,49 @@ class GeminiFlowUI {
         <div id="gf-body">
           <!-- Switcher -->
           <div class="tab-switcher">
-            <button class="tab-btn" data-target="gf-assets">MEDIA POOL</button>
-            <button class="tab-btn" data-target="gf-flows">TIMELINE</button>
-            <button class="tab-btn active" data-target="gf-exec">MASTER CONTROL</button>
+            <button class="tab-btn" data-target="gf-assets">BANCO DE MEDIOS</button>
+            <button class="tab-btn" data-target="gf-flows">LÍNEA DE TIEMPO</button>
+            <button class="tab-btn active" data-target="gf-exec">CONTROL MAESTRO</button>
           </div>
 
           <div class="panel-body">
             <!-- TAB: MEDIA POOL -->
             <div id="gf-assets" class="gf-tab-content" style="display: none;">
               <div class="dropzone">
-                <div class="dropzone-label">Drop Keyframes / Character Sheets</div>
+                <div class="dropzone-label">Arrastra aquí tus fotogramas o fichas de personaje</div>
                 <div style="display:flex; gap:8px;">
-                  <input type="text" id="gf-asset-shortcode" placeholder="@TAG (auto-assigned if empty)" style="margin:0;">
-                  <input type="file" id="gf-asset-file" accept="image/*" multiple style="font-size:10px; width:150px;">
-                  <button id="gf-upload-asset-btn" class="btn-micro cyan">ADD MEDIA</button>
+                  <input type="text" id="gf-asset-shortcode" placeholder="Etiqueta (ej. @1, @rival, @arena)" style="margin:0;">
+                  <input type="file" id="gf-asset-file" accept="image/*" multiple style="font-size:10px; width:150px;" title="Seleccionar archivo">
+                  <button id="gf-upload-asset-btn" class="btn-micro cyan">AGREGAR</button>
                 </div>
               </div>
+              <strong style="display:block; margin-bottom:5px; color:#8B949E; font-size:10px;">Archivos listos para inyección directa</strong>
               <div id="gf-asset-list"></div>
             </div>
 
             <!-- TAB: TIMELINE -->
             <div id="gf-flows" class="gf-tab-content" style="display: none;">
                <div style="margin-bottom:15px;">
-                 <strong style="display:block; margin-bottom:5px; color:#8B949E; font-size:10px;">PRESET LOADERS</strong>
+                 <strong style="display:block; margin-bottom:5px; color:#8B949E; font-size:10px;">PLANTILLAS PREDEFINIDAS</strong>
                  <div style="display:flex; gap:5px;">
-                   <button id="gf-load-aas-btn" class="btn-micro cyan" style="flex:1;">AAS DUAL-PASS (RAW ANIME)</button>
-                   <button id="gf-load-direct-btn" class="btn-micro" style="flex:1;">DIRECT PHOTOREAL (SKIP PASS 1)</button>
+                   <button id="gf-load-aas-btn" class="btn-micro cyan" style="flex:1;">CARGAR PLANTILLA ANIME A REALISMO (AAS)</button>
+                   <button id="gf-load-direct-btn" class="btn-micro" style="flex:1;">REALISMO DIRECTO (SALTA PASO 1)</button>
                  </div>
                </div>
 
                <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
-                  <strong style="color:#8B949E; font-size:10px;">ACTIVE SEQUENCE</strong>
+                  <strong style="color:#8B949E; font-size:10px;">SECUENCIA ACTIVA</strong>
                   <div style="display:flex; gap:5px;">
-                     <button id="gf-add-step-btn" class="btn-micro">ADD CLIP</button>
-                     <button id="gf-save-flow-btn" class="btn-micro cyan" style="background:#54C8D8; color:#000;">SAVE TIMELINE</button>
+                     <button id="gf-add-step-btn" class="btn-micro">AGREGAR TOMA</button>
+                     <button id="gf-save-flow-btn" class="btn-micro cyan" style="background:#54C8D8; color:#000;">GUARDAR SECUENCIA</button>
                   </div>
                </div>
 
-               <input type="text" id="gf-flow-name" placeholder="Sequence Name">
+               <input type="text" id="gf-flow-name" placeholder="Nombre de la secuencia (ej. Batalla Todoroki vs Deku)">
                <div id="gf-steps-container"></div>
 
                <div style="margin-top:20px; border-top:1px solid #30363D; padding-top:10px;">
-                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">SAVED SEQUENCES</strong>
+                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">SECUENCIAS GUARDADAS</strong>
                  <div id="gf-flow-list"></div>
                </div>
             </div>
@@ -436,27 +437,27 @@ class GeminiFlowUI {
             <!-- TAB: MASTER CONTROL -->
             <div id="gf-exec" class="gf-tab-content active">
               <select id="gf-flow-select">
-                <option value="">SELECT SEQUENCE TO RENDER...</option>
+                <option value="">SELECCIONAR SECUENCIA A RENDERIZAR...</option>
               </select>
 
               <div class="master-deck">
                 <div class="tracker" id="gf-tracker">
                   <!-- Nodes injected dynamically -->
-                  <div class="tracker-node">[IDLE]</div>
+                  <div class="tracker-node">[INACTIVO]</div>
                 </div>
 
-                <button id="gf-start-btn" class="btn-master btn-render" disabled>MASTER RENDER</button>
+                <button id="gf-start-btn" class="btn-master btn-render" disabled>INICIAR RENDERIZADO</button>
                 <div style="display:flex; gap:10px;">
-                  <button id="gf-pause-btn" class="btn-master btn-hold" disabled>HOLD</button>
-                  <button id="gf-skip-btn" class="btn-master" style="background:#30363D; color:#C9D1D9;" disabled>SKIP</button>
-                  <button id="gf-stop-btn" class="btn-master btn-abort" disabled>ABORT</button>
+                  <button id="gf-pause-btn" class="btn-master btn-hold" disabled>PAUSAR</button>
+                  <button id="gf-skip-btn" class="btn-master" style="background:#30363D; color:#C9D1D9;" disabled>SALTAR TOMA</button>
+                  <button id="gf-stop-btn" class="btn-master btn-abort" disabled>CANCELAR</button>
                 </div>
               </div>
 
               <div style="margin-top:15px;">
-                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">SYSTEM TERMINAL</strong>
+                 <strong style="color:#8B949E; font-size:10px; display:block; margin-bottom:5px;">TERMINAL DEL SISTEMA</strong>
                  <div class="terminal" id="gf-terminal">
-                   <p class="term-sys">> System Ready.</p>
+                   <p class="term-sys">> Sistema listo.</p>
                  </div>
               </div>
             </div>
@@ -466,7 +467,6 @@ class GeminiFlowUI {
     `;
 
     document.body.appendChild(this.hostContainer);
-    this.startTC();
     this.bindEvents();
     this.makeDraggable();
 
@@ -477,17 +477,30 @@ class GeminiFlowUI {
     }, 500);
   }
 
-  startTC() {
+  resetTimer() {
+    this.stopTimer();
+    this.tcSeconds = 0;
+    this.shadow.querySelector('#tc-display').innerText = `TC [00:00:00]`;
+  }
+
+  startTimer() {
+    if (this.tcInterval) return;
     this.tcInterval = setInterval(() => {
-      this.tcFrames++;
-      const f = this.tcFrames % 24;
-      const s = Math.floor(this.tcFrames / 24) % 60;
-      const m = Math.floor(this.tcFrames / (24 * 60)) % 60;
-      const h = Math.floor(this.tcFrames / (24 * 60 * 60));
+      this.tcSeconds++;
+      const s = this.tcSeconds % 60;
+      const m = Math.floor(this.tcSeconds / 60) % 60;
+      const h = Math.floor(this.tcSeconds / 3600);
 
       const pad = (n) => n.toString().padStart(2, '0');
-      this.shadow.querySelector('#tc-display').innerText = `TC [${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}]`;
-    }, 1000 / 24);
+      this.shadow.querySelector('#tc-display').innerText = `TC [${pad(h)}:${pad(m)}:${pad(s)}]`;
+    }, 1000);
+  }
+
+  stopTimer() {
+    if (this.tcInterval) {
+      clearInterval(this.tcInterval);
+      this.tcInterval = null;
+    }
   }
 
   logTerm(msg, type="sys") {
@@ -509,14 +522,14 @@ class GeminiFlowUI {
     tracker.innerHTML = '';
 
     if (total === 0) {
-      tracker.innerHTML = `<div class="tracker-node">[IDLE]</div>`;
+      tracker.innerHTML = `<div class="tracker-node">[INACTIVO]</div>`;
       return;
     }
 
     for (let i = 0; i < total; i++) {
       const node = document.createElement('div');
       node.className = `tracker-node ${i === stepIndex ? 'active' : ''}`;
-      node.innerText = `[CLIP ${i+1}]`;
+      node.innerText = `[TOMA ${i+1}]`;
       tracker.appendChild(node);
 
       if (i < total - 1) {
@@ -533,7 +546,7 @@ class GeminiFlowUI {
 
       const zipNode = document.createElement('div');
       zipNode.className = 'tracker-node active';
-      zipNode.innerText = '[EXPORT]';
+      zipNode.innerText = '[EXPORTAR ZIP]';
       tracker.appendChild(zipNode);
     }
   }
@@ -713,13 +726,13 @@ class GeminiFlowUI {
 
     stepDiv.innerHTML = `
       <div class="clip-header">
-        <span class="clip-tc gf-step-label">CLIP ${stepCount}</span>
-        <button class="btn-micro red gf-remove-step-btn">TRASH</button>
+        <span class="clip-tc gf-step-label">TOMA ${stepCount}</span>
+        <button class="btn-micro red gf-remove-step-btn">ELIMINAR</button>
       </div>
       <div class="quick-chips">${chips}</div>
-      <textarea class="clip-textarea" placeholder="Enter screenplay beats or keyframe references...">${promptText}</textarea>
+      <textarea class="clip-textarea" placeholder="Escribe las acciones, movimientos de cámara y sonido...">${promptText}</textarea>
       <div style="display:flex; align-items:center; gap:5px;">
-        <span style="color:#8B949E; font-size:10px;">DELAY (MS)</span>
+        <span style="color:#8B949E; font-size:10px;">ESPERA (MS)</span>
         <input type="number" class="gf-step-delay" value="${delayValue}" style="margin:0; width:80px;">
       </div>
     `;
@@ -736,7 +749,7 @@ class GeminiFlowUI {
     const container = this.shadow.querySelector('#gf-steps-container');
     const steps = container.querySelectorAll('.gf-step-editor');
     steps.forEach((step, index) => {
-      step.querySelector('.gf-step-label').innerText = `CLIP ${index + 1}`;
+      step.querySelector('.gf-step-label').innerText = `TOMA ${index + 1}`;
     });
   }
 
@@ -764,8 +777,8 @@ class GeminiFlowUI {
           <div class="media-filename">${asset.filename} | ${sizeKB} KB</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:4px;">
-          <button class="btn-micro cyan gf-inject-btn">INJECT</button>
-          <button class="btn-micro red gf-del-btn">TRASH</button>
+          <button class="btn-micro cyan gf-inject-btn">INSERTAR</button>
+          <button class="btn-micro red gf-del-btn">ELIMINAR</button>
         </div>
       `;
 
@@ -817,7 +830,7 @@ class GeminiFlowUI {
              <div><span style="color:#FFF; font-weight:bold; font-size:11px;">${flow.name}</span></div>
              <div class="media-filename">${flow.steps.length} Clips Total</div>
           </div>
-          <button class="btn-micro red gf-del-flow-btn">TRASH</button>
+          <button class="btn-micro red gf-del-flow-btn">ELIMINAR</button>
         `;
 
         row.querySelector('.gf-del-flow-btn').addEventListener('click', async () => {
