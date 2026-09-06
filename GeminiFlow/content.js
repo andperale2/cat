@@ -247,8 +247,8 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
       promptText += antiMutationStr;
     }
 
-    // Extract strictly unique shortcodes using word boundaries to prevent substring overlap
-    const rawMatches = promptText.match(/\@[a-zA-Z0-9_-]+\b/g) || [];
+    // Extract strictly unique shortcodes using word boundaries, allowing file extensions (e.g. @1.jpg)
+    const rawMatches = promptText.match(/\@[a-zA-Z0-9_.-]+\b/g) || [];
     const uniqueShortcodes = [...new Set(rawMatches)];
 
     // Fetch assets from DB
@@ -342,7 +342,7 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     // 6. Extract & Queue Image/Video Output
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "ZIPPING");
     this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Extrayendo assets maestros...`);
-    await this.extractAndQueueMedia(this.currentStepIndex + 1, promptText);
+    await this.extractAndQueueMedia(this.currentStepIndex + 1, promptText, step.outputName);
 
     // 7. Delay before next step
     if (this.isRunning) {
@@ -385,7 +385,7 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     });
   }
 
-  async extractAndQueueMedia(stepNum, promptText) {
+  async extractAndQueueMedia(stepNum, promptText, customOutputName = null) {
     const messageContainers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"], div.image-container');
     if (messageContainers.length === 0) {
       this.ui.logTerm(`ERR: No se detectó contenedor de respuesta para [TOMA ${stepNum}]`, "err");
@@ -464,7 +464,14 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
           const base64 = base64Data.split(',')[1];
           const ext = isVideo ? 'mp4' : 'jpg';
           const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
-          const filename = `TOMA_${stepNum}.${ext}`;
+
+          let filename = customOutputName ? `${customOutputName}.${ext}` : `TOMA_${stepNum}.${ext}`;
+
+          // Handle duplicates gracefully if multiple medias returned per step
+          if (mediaUrls.length > 1) {
+            filename = customOutputName ? `${customOutputName}_${i+1}.${ext}` : `TOMA_${stepNum}_${i+1}.${ext}`;
+          }
+
           this.sequenceAssets.push({ filename, base64 });
 
           if (!isVideo) {

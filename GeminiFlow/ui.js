@@ -431,9 +431,12 @@ class GeminiFlowUI {
             <div id="gf-flows" class="gf-tab-content" style="display: none;">
                <div style="margin-bottom:15px;">
                  <strong style="display:block; margin-bottom:5px; color:#8B949E; font-size:10px;">PLANTILLAS PREDEFINIDAS</strong>
-                 <div style="display:flex; gap:5px;">
-                   <button id="gf-load-aas-btn" class="btn-micro cyan" style="flex:1;">CARGAR PLANTILLA ANIME A REALISMO (AAS)</button>
-                   <button id="gf-load-direct-btn" class="btn-micro" style="flex:1;">REALISMO DIRECTO (SALTA PASO 1)</button>
+                 <div style="display:flex; flex-direction:column; gap:5px;">
+                   <div style="display:flex; gap:5px;">
+                     <button id="gf-load-aas-btn" class="btn-micro cyan" style="flex:1;">CARGAR PLANTILLA ANIME A REALISMO (AAS)</button>
+                     <button id="gf-load-direct-btn" class="btn-micro" style="flex:1;">REALISMO DIRECTO (SALTA PASO 1)</button>
+                   </div>
+                   <button id="gf-load-connector-btn" class="btn-micro" style="border-color:#00E5FF; color:#00E5FF; width:100%;">⚡ CARGAR SHOT CONNECTOR ENGINE (4 TOMAS)</button>
                  </div>
                </div>
 
@@ -713,6 +716,19 @@ class GeminiFlowUI {
       this.logTerm(`SYS: Direct Preset Loaded to Timeline`);
     });
 
+    this.shadow.querySelector('#gf-load-connector-btn').addEventListener('click', () => {
+      this.shadow.querySelector('#gf-flow-name').value = "Shot Connector Engine (AAS Ep10)";
+      this.shadow.querySelector('#gf-steps-container').innerHTML = '';
+      const connectorSteps = [
+        { prompt: "Cinematic live-action shot starting strictly from the pose in @1.jpg. The athletic subject remains grounded in a low crouched stance against a giant crystalline ice structure, breathing heavily with visible cold vapor. Static camera with subtle handheld micro-shake. 35mm film grain, hyper-realistic fabric textures, practical ice density.", delay: 4000, outputName: "01_ice_crouch" },
+        { prompt: "Cinematic macro extreme close-up starting strictly from the eye in @2.jpg. The realistic blue pupil dilates in shock as bright practical orange flames suddenly burst from the right edge of the frame, casting intense dynamic flicker across the cornea. Razor-thin depth of field, 35mm optical flare.", delay: 4000, outputName: "02_eye_flare" },
+        { prompt: "Full-shot live-action sequence starting from @5.jpg. The subject straightens his posture as continuous volumetric fire ignites and billows across his entire left arm and shoulder. Intense warm rim light reflects off the dark wet arena concrete. Anamorphic lens flare, realistic heat distortion waves.", delay: 4000, outputName: "03_fire_ignite" },
+        { prompt: "Cinematic close-up portrait starting from @4.jpg. The freckled subject with dark curls watches in awe, a subtle defiant smirk forming on his face. Thick white steam drifts past his torn uniform in the background. High-contrast film lighting, photorealistic skin pores and sweat.", delay: 4000, outputName: "04_reaction_smirk" }
+      ];
+      connectorSteps.forEach((step, idx) => this.addStepEditor(step.prompt, step.delay, idx+1, step.outputName));
+      this.logTerm(`SYS: Shot Connector Preset Loaded to Timeline`);
+    });
+
     // Add Clip
     this.shadow.querySelector('#gf-add-step-btn').addEventListener('click', () => {
       this.addStepEditor();
@@ -728,10 +744,12 @@ class GeminiFlowUI {
 
       const stepEls = this.shadow.querySelectorAll('.gf-step-editor');
       const steps = Array.from(stepEls).map((el, index) => {
+        const outName = el.querySelector('.gf-step-outputname')?.value.trim();
         return {
           step: index + 1,
           prompt: el.querySelector('.clip-textarea').value,
-          delay: parseInt(el.querySelector('.gf-step-delay').value, 10) || 4000
+          delay: parseInt(el.querySelector('.gf-step-delay').value, 10) || 4000,
+          outputName: outName || null
         };
       });
 
@@ -790,7 +808,7 @@ class GeminiFlowUI {
     });
   }
 
-  addStepEditor(promptText = '', delayValue = 4000, forceIndex = null) {
+  addStepEditor(promptText = '', delayValue = 4000, forceIndex = null, outputName = '') {
     const container = this.shadow.querySelector('#gf-steps-container');
     const stepCount = forceIndex || (container.children.length + 1);
     const stepDiv = document.createElement('div');
@@ -808,9 +826,15 @@ class GeminiFlowUI {
       </div>
       <div class="quick-chips">${chips}</div>
       <textarea class="clip-textarea" placeholder="Escribe las acciones, movimientos de cámara y sonido...">${promptText}</textarea>
-      <div style="display:flex; align-items:center; gap:5px;">
-        <span style="color:#8B949E; font-size:10px;">ESPERA (MS)</span>
-        <input type="number" class="gf-step-delay" value="${delayValue}" style="margin:0; width:80px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:5px;">
+          <span style="color:#8B949E; font-size:10px;">ESPERA (MS)</span>
+          <input type="number" class="gf-step-delay" value="${delayValue}" style="margin:0; width:80px;">
+        </div>
+        <div style="display:flex; align-items:center; gap:5px;">
+          <span style="color:#8B949E; font-size:10px;">SALIDA (OPCIONAL)</span>
+          <input type="text" class="gf-step-outputname" placeholder="ej. 01_shot" value="${outputName}" style="margin:0; width:120px;">
+        </div>
       </div>
     `;
 

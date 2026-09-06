@@ -45,9 +45,19 @@ class DB {
         await this.saveFlow({
           name: "Anime to Live-Action (AAS)",
           steps: [
-            { step: 1, prompt: "Cinematic film photograph of the athletic subject in @1 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000 },
-            { step: 2, prompt: "Cinematic film photograph of the athletic subject in @2 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000 },
-            { step: 3, prompt: "Cinematic choreographed sequence of @foto1 and @foto2 in motion within the arena plate. Rapid athletic movement, dynamic low-angle tracking camera with smooth orbit, atmospheric mist, high-contrast film lighting. Zero distortion, photorealistic.", delay: 4000 }
+            { step: 1, prompt: "Cinematic film photograph of the athletic subject in @1 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000, outputName: "01_character_a" },
+            { step: 2, prompt: "Cinematic film photograph of the athletic subject in @2 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000, outputName: "02_character_b" },
+            { step: 3, prompt: "Cinematic choreographed sequence of @foto1 and @foto2 in motion within the arena plate. Rapid athletic movement, dynamic low-angle tracking camera with smooth orbit, atmospheric mist, high-contrast film lighting. Zero distortion, photorealistic.", delay: 4000, outputName: "03_dynamic_clash" }
+          ]
+        });
+
+        await this.saveFlow({
+          name: "Shot Connector Engine (AAS Ep10)",
+          steps: [
+            { step: 1, prompt: "Cinematic live-action shot starting strictly from the pose in @1.jpg. The athletic subject remains grounded in a low crouched stance against a giant crystalline ice structure, breathing heavily with visible cold vapor. Static camera with subtle handheld micro-shake. 35mm film grain, hyper-realistic fabric textures, practical ice density.", delay: 4000, outputName: "01_ice_crouch" },
+            { step: 2, prompt: "Cinematic macro extreme close-up starting strictly from the eye in @2.jpg. The realistic blue pupil dilates in shock as bright practical orange flames suddenly burst from the right edge of the frame, casting intense dynamic flicker across the cornea. Razor-thin depth of field, 35mm optical flare.", delay: 4000, outputName: "02_eye_flare" },
+            { step: 3, prompt: "Full-shot live-action sequence starting from @5.jpg. The subject straightens his posture as continuous volumetric fire ignites and billows across his entire left arm and shoulder. Intense warm rim light reflects off the dark wet arena concrete. Anamorphic lens flare, realistic heat distortion waves.", delay: 4000, outputName: "03_fire_ignite" },
+            { step: 4, prompt: "Cinematic close-up portrait starting from @4.jpg. The freckled subject with dark curls watches in awe, a subtle defiant smirk forming on his face. Thick white steam drifts past his torn uniform in the background. High-contrast film lighting, photorealistic skin pores and sweat.", delay: 4000, outputName: "04_reaction_smirk" }
           ]
         });
       }
