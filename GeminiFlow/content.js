@@ -321,8 +321,26 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
         const base64Data = await this.fetchImageViaBackground(url);
         if (base64Data) {
           const base64 = base64Data.split(',')[1];
-          const filename = `foto${stepNum}.jpg`; // Tag it appropriately, e.g. foto1, foto2
+          const filename = `foto${stepNum}.jpg`;
           this.sequenceAssets.push({ filename, base64 });
+
+          // Auto-chain: Save generated image back into IndexedDB so next step can reference it
+          try {
+             // Convert base64 back to Blob to ingest
+             const byteCharacters = atob(base64);
+             const byteNumbers = new Array(byteCharacters.length);
+             for (let j = 0; j < byteCharacters.length; j++) {
+                byteNumbers[j] = byteCharacters.charCodeAt(j);
+             }
+             const byteArray = new Uint8Array(byteNumbers);
+             const blob = new Blob([byteArray], {type: 'image/jpeg'});
+
+             await this.db.saveAsset(`@foto${stepNum}`, blob, filename);
+             this.ui.logTerm(`[SYS] Fotograma capturado con éxito. Avanzando automáticamente...`);
+             this.ui.refreshAssetsList();
+          } catch(e) {
+             console.error("Auto-chain save failed", e);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch image", url, err);

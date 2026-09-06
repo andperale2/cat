@@ -164,36 +164,43 @@ class GeminiFlowDOMActions {
           stopBtn = Array.from(icons).find(el => el.textContent.trim() === 'stop_circle');
         }
 
-        // Look for generic loading dots/spinners inside message containers
         const loadingIndicators = document.querySelectorAll('.loading-indicator, [class*="shimmer"], [class*="skeleton"]');
-
         const isGenerating = !!stopBtn || loadingIndicators.length > 0;
 
         if (isGenerating) {
           generationStarted = true;
         } else {
-          // If we never detected the stop button (because it was too fast or DOM changed)
-          // OR if generationStarted and now finished.
-          // We rely on the absolute verification of the Send Button state.
+          // Verify if a generated image already securely mounted in the newest response
+          const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"]');
+          if (containers.length > 0) {
+            const last = containers[containers.length - 1];
+            const imgs = last.querySelectorAll('img[src*="googleusercontent.com"]:not([src*="avatar"])');
+            for (let i = 0; i < imgs.length; i++) {
+               if (imgs[i].complete && imgs[i].naturalWidth > 300) {
+                 clearInterval(checkInterval);
+                 return resolve(true); // Image explicitly generated, fast exit
+               }
+            }
+          }
+
+          // Fallback verify the Send Button state
           const btn = this.getSendButton();
           const isButtonReady = btn && !btn.disabled && btn.getAttribute('aria-disabled') !== "true";
 
           if (isButtonReady) {
             clearInterval(checkInterval);
-            // Wait a tiny bit extra for DOM to completely settle images
             setTimeout(() => resolve(true), 2500);
           }
         }
       };
 
-      // Poll every 500ms
       checkInterval = setInterval(checkState, 500);
 
-      // Safety timeout: extended to 3 minutes for long generation delays
+      // Safety timeout for image generation: 90 seconds
       setTimeout(() => {
         clearInterval(checkInterval);
-        resolve(false); // timeout
-      }, 180000);
+        resolve(false);
+      }, 90000);
     });
   }
 
