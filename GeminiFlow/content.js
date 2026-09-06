@@ -72,6 +72,43 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     // Execute send
     this.ui.logTerm("Solicitando desglose técnico a Gemini...");
     await this.dom.clickSend();
+
+    // Wait for the generation of the response text
+    this.ui.logTerm("Esperando análisis de video...");
+    const success = await this.dom.waitForGeneration();
+
+    if (success && success !== "REJECTED") {
+      const responseText = await this.dom.getLatestResponseText();
+      if (responseText && responseText.includes("GUION TÉCNICO")) {
+        // Simple extraction heuristic for the script portion
+        const scriptSection = responseText.split(/GUION TÉCNICO[^\n]*\n/i)[1];
+        if (scriptSection) {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+          this.ui.shadow.querySelector('#gf-flow-name').value = `Secuencia Analizada - ${timestamp}`;
+          this.ui.shadow.querySelector('#gf-steps-container').innerHTML = '';
+
+          // Use basic line splitting for beats
+          const beats = scriptSection.split(/\n+/).filter(l => l.trim().length > 10);
+
+          beats.forEach((beatText, idx) => {
+            // Strip numbered lists naturally outputted
+            const cleanBeat = beatText.replace(/^\d+\.\s*/, '').trim();
+            this.ui.addStepEditor(cleanBeat, 4000, idx+1);
+          });
+
+          this.ui.logTerm("SYS: Guion importado exitosamente a la Línea de Tiempo.", "sys");
+        } else {
+          this.ui.logTerm("ERR: No se pudo extraer el guion estructurado del análisis.", "err");
+        }
+      }
+    } else {
+      this.ui.logTerm("ERR: Análisis fallido o bloqueado.", "err");
+    }
+
+    this.ui.shadow.querySelector('#gf-analyze-video-btn').innerText = "ANALIZAR CLIP CON GEMINI";
+    this.ui.shadow.querySelector('#gf-analyze-video-btn').disabled = false;
+    this.ui.shadow.querySelector('#gf-analyze-video-btn').style.animation = "";
   }
 
   async startFlow(flowId) {

@@ -124,14 +124,15 @@ class GeminiFlowDOMActions {
 
       // If missing after 3 seconds, attempt to click initialization canvas triggers
       // Google Flow frequently hides the prompt input behind a tile "Edita un video con Omni" or a bottom "+" button
+      // Or Material FABs (Floating Action Buttons) on mobile/scaled views
       if (elapsed === 3000 || elapsed === 8000) {
-         if (logCallback && elapsed === 3000) logCallback(`[SYS] Esperando inicialización del lienzo de Google Flow...`);
+         if (logCallback && elapsed === 3000) logCallback(`[SYS] Reabriendo contenedor de prompt (Lienzo cerrado)...`);
 
-         const buttons = document.querySelectorAll('button, div[role="button"], a, div.action-tile, .primary-action');
+         const buttons = document.querySelectorAll('button, div[role="button"], a, div.action-tile, .primary-action, .fab, .mat-fab');
          const initBtn = Array.from(buttons).find(el => {
             const txt = el.textContent.trim().toLowerCase();
             const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-            return txt.includes('edita un video con omni') || txt === 'nuevo elemento' || txt === 'crear clip' || txt === 'nuevo' || txt === 'start' || txt === 'añadir' || txt === 'multimedia' || txt === '+' || aria.includes('multimedia') || aria.includes('nuevo');
+            return txt.includes('edita un video con omni') || txt === 'nuevo elemento' || txt === 'crear' || txt === 'crear clip' || txt === 'nuevo' || txt === 'start' || txt === 'añadir' || txt === 'multimedia' || txt === '+' || aria.includes('multimedia') || aria.includes('nuevo') || aria.includes('crear');
          });
 
          if (initBtn) {
@@ -317,6 +318,15 @@ class GeminiFlowDOMActions {
       if (codeblocks.length > 0) return true;
     }
     return false;
+  }
+
+  async getLatestResponseText() {
+    const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"]');
+    if (containers.length > 0) {
+      const last = containers[containers.length - 1];
+      return last.innerText || last.textContent;
+    }
+    return null;
   }
 
   async waitForGeneration() {
