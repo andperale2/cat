@@ -1,5 +1,19 @@
 /* GeminiFlow Background Service Worker */
 
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id) return;
+  try {
+    await chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_UI" });
+  } catch (err) {
+    // Content script not loaded yet or connection refused, fallback injection
+    console.warn("Could not toggle UI, injecting scripts manually", err);
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["vendor/jszip.min.js", "storage/db.js", "dom_actions.js", "ui.js", "content.js"]
+    });
+  }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "FETCH_IMAGE") {
     // Fetch image from URL, bypassing CORS as background workers have greater privileges

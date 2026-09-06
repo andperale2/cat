@@ -965,6 +965,12 @@ class GeminiFlowUI {
     this.shadow.querySelector('#gf-skip-btn').disabled = !isRunning;
     this.shadow.querySelector('#gf-flow-select').disabled = isRunning;
   }
+
+  toggleVisibility() {
+    if (!this.hostContainer) return;
+    const current = this.hostContainer.style.display;
+    this.hostContainer.style.display = (current === 'none') ? 'block' : 'none';
+  }
 }
 
 // Attach globally

@@ -497,6 +497,18 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
 // Wait a brief moment to ensure DOM/DB are ready, then init
 setTimeout(() => {
   if (typeof window.GeminiFlowDB !== 'undefined' && typeof window.GeminiFlowUI !== 'undefined') {
-    window.GeminiFlowInstance = new GeminiFlowOrchestrator();
+    if (!window.GeminiFlowInstance) {
+      window.GeminiFlowInstance = new GeminiFlowOrchestrator();
+    }
   }
 }, 1000);
+
+// Listen for Extension Icon Clicks to toggle the UI
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "TOGGLE_UI") {
+    if (window.GeminiFlowInstance && window.GeminiFlowInstance.ui) {
+      window.GeminiFlowInstance.ui.toggleVisibility();
+    }
+    sendResponse({ success: true });
+  }
+});
