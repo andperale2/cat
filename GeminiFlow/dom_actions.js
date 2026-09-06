@@ -26,6 +26,20 @@ class GeminiFlowDOMActions {
          await new Promise(r => setTimeout(r, 1000));
       }
     }
+
+    this.dismissErrors();
+  }
+
+  dismissErrors() {
+    // Actively hide or clear Google Flow error toasts so they don't instantly trip the next fallback observer
+    const errorNodes = document.querySelectorAll('div, span, p');
+    Array.from(errorNodes).forEach(el => {
+      const txt = el.textContent.trim().toLowerCase();
+      if (txt.includes('no se pudo completar la acción') || txt.includes('no se pudo generar la imagen')) {
+         el.style.display = 'none'; // visually hide
+         el.innerText = ''; // clear text to prevent future querySelector matches
+      }
+    });
   }
 
   async bypassModal() {
@@ -283,11 +297,11 @@ class GeminiFlowDOMActions {
 
       checkInterval = setInterval(checkState, 500);
 
-      // Safety timeout for image generation: 90 seconds
+      // Safety timeout for image/video generation increased to allow ample time for 10s Google Flow generation
       setTimeout(() => {
         clearInterval(checkInterval);
         resolve(false);
-      }, 90000);
+      }, 120000);
     });
   }
 

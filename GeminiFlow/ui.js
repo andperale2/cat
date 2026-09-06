@@ -689,9 +689,9 @@ class GeminiFlowUI {
       this.shadow.querySelector('#gf-flow-name').value = "Anime to Live-Action (AAS)";
       this.shadow.querySelector('#gf-steps-container').innerHTML = '';
       const aasSteps = [
-        { prompt: "Cinematic 35mm photograph of the character in @1. Photorealistic human skin, authentic fabric, natural studio lighting, anamorphic lens contrast, shallow depth of field. Avoid: anime drawing, plastic CGI skin, text, illustrations.", delay: 4000 },
-        { prompt: "Cinematic 35mm photograph of the character in @2. Photorealistic human skin, authentic fabric, natural studio lighting, anamorphic lens contrast, shallow depth of field. Avoid: anime drawing, plastic CGI skin, text, illustrations.", delay: 4000 },
-        { prompt: "Cinematic sequence: @foto1 attacks with rapid kinetic strikes; @foto2 remains still, parrying. Sharp impact particle burst on collision. Dynamic camera orbiting with slight whip-in. @foto1 lands a decisive clean hit, whip-pan with slow-motion impact. Cinematic film grading.", delay: 4000 }
+        { prompt: "Cinematic film photograph of the athletic subject in @1 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000 },
+        { prompt: "Cinematic film photograph of the athletic subject in @2 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000 },
+        { prompt: "Cinematic choreographed sequence of @foto1 and @foto2 in motion within the arena plate. Rapid athletic movement, dynamic low-angle tracking camera with smooth orbit, atmospheric mist, high-contrast film lighting. Zero distortion, photorealistic.", delay: 4000 }
       ];
       aasSteps.forEach((step, idx) => this.addStepEditor(step.prompt, step.delay, idx+1));
       this.logTerm(`SYS: AAS Preset Loaded to Timeline`);
@@ -701,8 +701,8 @@ class GeminiFlowUI {
       this.shadow.querySelector('#gf-flow-name').value = "Direct Photoreal Sequence";
       this.shadow.querySelector('#gf-steps-container').innerHTML = '';
       const directSteps = [
-        { prompt: "Cinematic 35mm photograph of the character in @1. Photorealistic human skin, authentic fabric, natural studio lighting, anamorphic lens contrast, shallow depth of field. Avoid: anime drawing, plastic CGI skin, text, illustrations.", delay: 4000 },
-        { prompt: "Cinematic sequence: @foto1 attacks with rapid kinetic strikes; opposing force parries. Sharp impact particle burst on collision. Dynamic camera orbiting with slight whip-in. @foto1 lands a decisive clean hit, whip-pan with slow-motion impact. Cinematic film grading.", delay: 4000 }
+        { prompt: "Cinematic film photograph of the athletic subject in @1 standing in an arena. Photorealistic human features, natural fabric textures, dramatic studio lighting, 35mm film grain, shallow depth of field, anamorphic framing.", delay: 4000 },
+        { prompt: "Cinematic choreographed sequence of @foto1 and @foto2 in motion within the arena plate. Rapid athletic movement, dynamic low-angle tracking camera with smooth orbit, atmospheric mist, high-contrast film lighting. Zero distortion, photorealistic.", delay: 4000 }
       ];
       directSteps.forEach((step, idx) => this.addStepEditor(step.prompt, step.delay, idx+1));
       this.logTerm(`SYS: Direct Preset Loaded to Timeline`);

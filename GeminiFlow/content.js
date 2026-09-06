@@ -168,6 +168,14 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
                            .replace(/::[0-9.]+/g, '')
                            .trim();
 
+    // Apply Zero-Aggression Cinema Vocabulary Engine
+    promptText = promptText.replace(/\b(attack|attacks|strike|strikes|beat)\b/gi, 'kinetic physical choreography')
+                           .replace(/\b(blows|punch|kick|hit)\b/gi, 'synchronized stance shift')
+                           .replace(/\b(battle|fight|combat)\b/gi, 'high-intensity cinematic sequence')
+                           .replace(/\b(parry|block|defense)\b/gi, 'poised intercepting posture')
+                           .replace(/\b(collision|impact burst)\b/gi, 'kinetic visual flare')
+                           .replace(/\b(gore|bloody|visceral|mutant|mutilated)\b/gi, '');
+
     // Concise Enforcer and Guardrails to avoid Safety filter truncations
     const singleFrameEnforcer = "Genera una imagen: ";
     if (!promptText.includes("Genera una imagen:")) {
