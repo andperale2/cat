@@ -186,13 +186,16 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
                            .replace(/::[0-9.]+/g, '')
                            .trim();
 
-    // Apply Zero-Aggression Cinema Vocabulary Engine
+    // Apply Zero-Aggression Cinema Vocabulary Engine & Lore Scrubber
     promptText = promptText.replace(/\b(attack|attacks|strike|strikes|beat)\b/gi, 'kinetic physical choreography')
                            .replace(/\b(blows|punch|kick|hit)\b/gi, 'synchronized stance shift')
                            .replace(/\b(battle|fight|combat)\b/gi, 'high-intensity cinematic sequence')
                            .replace(/\b(parry|block|defense)\b/gi, 'poised intercepting posture')
-                           .replace(/\b(collision|impact burst)\b/gi, 'kinetic visual flare')
-                           .replace(/\b(gore|bloody|visceral|mutant|mutilated)\b/gi, '');
+                           .replace(/\b(collision|impact burst|blast)\b/gi, 'kinetic visual flare')
+                           .replace(/\b(gore|bloody|visceral|mutant|mutilated)\b/gi, '')
+                           .replace(/\b(todoroki)\b/gi, 'athletic male subject with dual-toned crimson and white hair, dark tournament tactical suit')
+                           .replace(/\b(deku|midoriya)\b/gi, 'athletic male subject with dark green curly hair, green utility combat suit')
+                           .replace(/\b(my hero academia|boku no hero)\b/gi, 'cinematic live-action anime adaptation');
 
     // Concise Enforcer and Guardrails to avoid Safety filter truncations
     const singleFrameEnforcer = "Genera una imagen: ";
@@ -252,7 +255,7 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
         await this.dom.prepareCanvas();
 
         // Construct ultra-safe fallback
-        let fallbackPrompt = "Genera una imagen: Cinematic medium shot based strictly on the uploaded references. 35mm film grain, deep shadows, natural studio lighting. Avoid text and illustrations.";
+        let fallbackPrompt = "Genera una imagen: Cinematic film photograph of the athletic subject in @1 within a stadium arena. Hyper-realistic skin textures, natural fabric weave, dramatic 35mm film lighting, anamorphic lens flare, shallow depth of field. 8k resolution, authentic live-action aesthetic. Avoid: text, illustrations.";
 
         // Re-inject identical assets
         for (const asset of assetsToInject) {
@@ -267,7 +270,17 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
 
     if (!success || success === "REJECTED") {
       if(!this.isRunning) return; // Stopped
-      this.ui.logTerm(`ERR: Fallo definitivo o tiempo de espera agotado`, "err");
+
+      if (success === "REJECTED") {
+         this.ui.logTerm(`SYS: Motor pausado por moderación de Google Flow. Ajusta el guion en Línea de Tiempo antes de continuar.`, "err");
+         this.isPaused = true;
+         const btn = this.ui.shadow.querySelector('#gf-pause-btn');
+         btn.innerText = "CONTINUAR";
+         btn.style.background = "rgba(255, 158, 69, 0.2)";
+         return; // Halt this execution loop completely until user manually resumes
+      } else {
+         this.ui.logTerm(`ERR: Fallo definitivo o tiempo de espera agotado`, "err");
+      }
     } else {
       // 5b. Verify if Gemini dumped text instead of an image
       if (!this.dom.hasGeneratedImage() && this.dom.hasTextCodeblockResponse()) {

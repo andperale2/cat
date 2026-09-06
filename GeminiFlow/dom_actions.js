@@ -123,14 +123,15 @@ class GeminiFlowDOMActions {
       if (editor) return true;
 
       // If missing after 3 seconds, attempt to click initialization canvas triggers
-      if (elapsed === 3000) {
-         if (logCallback) logCallback(`[SYS] Esperando inicialización del lienzo de Google Flow...`);
+      // Google Flow frequently hides the prompt input behind a tile "Edita un video con Omni" or a bottom "+" button
+      if (elapsed === 3000 || elapsed === 8000) {
+         if (logCallback && elapsed === 3000) logCallback(`[SYS] Esperando inicialización del lienzo de Google Flow...`);
 
-         const buttons = document.querySelectorAll('button, div[role="button"], a, div');
+         const buttons = document.querySelectorAll('button, div[role="button"], a, div.action-tile, .primary-action');
          const initBtn = Array.from(buttons).find(el => {
             const txt = el.textContent.trim().toLowerCase();
             const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-            return txt === 'nuevo elemento' || txt === 'crear clip' || txt === 'nuevo' || txt === 'start' || txt === 'añadir' || txt === 'multimedia' || txt === '+' || aria.includes('multimedia') || aria.includes('nuevo');
+            return txt.includes('edita un video con omni') || txt === 'nuevo elemento' || txt === 'crear clip' || txt === 'nuevo' || txt === 'start' || txt === 'añadir' || txt === 'multimedia' || txt === '+' || aria.includes('multimedia') || aria.includes('nuevo');
          });
 
          if (initBtn) {
