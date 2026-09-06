@@ -172,8 +172,6 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
       const asset = await this.db.getAsset(code);
       if (asset) {
         assetsToInject.push(asset);
-        // Cleanse prompt text globally of this shortcode to avoid text leakage
-        promptText = promptText.split(code).join('').trim();
       }
     }
 

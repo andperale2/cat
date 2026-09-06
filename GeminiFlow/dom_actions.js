@@ -17,14 +17,16 @@ class GeminiFlowDOMActions {
               document.querySelector('button[aria-label*="send"]') ||
               document.querySelector('button[aria-label*="Submit"]') ||
               document.querySelector('button[aria-label*="Enviar"]') ||
+              document.querySelector('div[role="button"][aria-label*="Send"]') ||
+              document.querySelector('div[role="button"][aria-label*="Enviar"]') ||
               document.querySelector('.send-button');
 
     if (!btn) {
       // Find mat-icon that contains "send" text
-      const icons = document.querySelectorAll('button mat-icon');
+      const icons = document.querySelectorAll('button mat-icon, mat-icon');
       const icon = Array.from(icons).find(el => el.textContent.trim() === 'send');
       if (icon) {
-        btn = icon.closest('button');
+        btn = icon.closest('button, div[role="button"]');
       }
     }
     return btn;
@@ -102,41 +104,61 @@ class GeminiFlowDOMActions {
   }
 
   async clickSend() {
-    return new Promise((resolve) => {
-      let attempts = 0;
+    return new Promise(async (resolve) => {
+      // 1. Wait for Send button to be enabled (accounting for image upload processing time)
+      let btnReady = false;
+      let btn = null;
+      for (let i = 0; i < 20; i++) { // max 10 seconds (20 * 500ms)
+         btn = this.getSendButton();
+         if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== "true") {
+           btnReady = true;
+           break;
+         }
+         await new Promise(r => setTimeout(r, 500));
+      }
 
-      const tryClick = () => {
-        attempts++;
-        const btn = this.getSendButton();
+      const editor = this.getEditor();
+      if (!editor) return resolve(false);
 
-        if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== "true") {
-          btn.click();
-          resolve(true);
-        } else if (attempts < 30) { // 15 seconds max (30 * 500ms)
-          setTimeout(tryClick, 500);
-        } else {
-          // Fallback to Enter key
-          console.log("Send button not ready, trying Enter key fallback");
-          const editor = this.getEditor();
-          if (editor) {
-            editor.dispatchEvent(new KeyboardEvent('keydown', { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }));
-          }
-          resolve(false);
-        }
-      };
+      // Attempt to submit and verify editor clears
+      let submitAttempts = 0;
+      while (submitAttempts < 3) {
+         if (btnReady && btn) {
+           btn.click();
+         } else {
+           // Fallback Enter
+           editor.dispatchEvent(new KeyboardEvent('keydown', { key: "Enter", code: "Enter", keyCode: 13, bubbles: true, cancelable: true }));
+         }
 
-      tryClick();
+         await new Promise(r => setTimeout(r, 800)); // buffer for DOM clear
+
+         // Verify submission by checking if editor content was cleared
+         if (editor.textContent.trim().length === 0) {
+           return resolve(true);
+         }
+
+         submitAttempts++;
+         btn = this.getSendButton(); // Refresh reference
+      }
+
+      // If we exit loop, it might have failed to send
+      console.error("DOM Action: Failed to submit prompt after 3 attempts.");
+      resolve(false);
     });
   }
 
   async waitForGeneration() {
+    // Enforce a mandatory minimum sleep at the start to ensure the DOM has time
+    // to transition out of input mode and into generation/streaming mode.
+    await new Promise(r => setTimeout(r, 5000));
+
     return new Promise((resolve) => {
       let generationStarted = false;
       let checkInterval;
 
       const checkState = () => {
         // Look for the "Stop generating" indicator
-        let stopBtn = document.querySelector('button[aria-label*="Stop generating"]');
+        let stopBtn = document.querySelector('button[aria-label*="Stop generating"], button[aria-label*="Detener"]');
         if (!stopBtn) {
           const icons = document.querySelectorAll('button mat-icon, mat-icon');
           stopBtn = Array.from(icons).find(el => el.textContent.trim() === 'stop_circle');
@@ -149,8 +171,10 @@ class GeminiFlowDOMActions {
 
         if (isGenerating) {
           generationStarted = true;
-        } else if (generationStarted && !isGenerating) {
-          // Extra verification: Check if send button is re-enabled to confirm generation is TRULY finished
+        } else {
+          // If we never detected the stop button (because it was too fast or DOM changed)
+          // OR if generationStarted and now finished.
+          // We rely on the absolute verification of the Send Button state.
           const btn = this.getSendButton();
           const isButtonReady = btn && !btn.disabled && btn.getAttribute('aria-disabled') !== "true";
 
