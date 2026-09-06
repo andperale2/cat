@@ -5,9 +5,38 @@ class GeminiFlowDOMActions {
     this.observer = null;
   }
 
+  async bypassModal() {
+    const buttons = document.querySelectorAll('button, div[role="button"]');
+    const btn = Array.from(buttons).find(el => el.textContent.trim().includes('Entendido') || (el.getAttribute('aria-label') && el.getAttribute('aria-label').includes('Entendido')));
+    if (btn) {
+      btn.click();
+      await new Promise(r => setTimeout(r, 800)); // wait for modal transition
+    }
+  }
+
+  async configureVideoSettings() {
+    // Attempt to locate formatting pill "Video · 720p · 8s" and force 10s if available
+    const configPill = document.querySelector('button[aria-label*="Video"], div[role="button"][aria-label*="Video"]');
+    if (configPill) {
+      configPill.click();
+      await new Promise(r => setTimeout(r, 500));
+      const items = document.querySelectorAll('li, div');
+      const tenSecBtn = Array.from(items).find(el => el.textContent.trim() === '10s');
+      if (tenSecBtn) {
+         tenSecBtn.click();
+      } else {
+         // Close menu if not found
+         document.body.click();
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
   getEditor() {
-    // Gemini's input is typically a contenteditable div
+    // Google Flow / Gemini Input command bar
     return document.querySelector('div[contenteditable="true"]') ||
+           document.querySelector('textarea[aria-label*="Qué quieres crear"]') ||
+           document.querySelector('textarea[aria-label*="What do you want to create"]') ||
            document.querySelector('rich-textarea') ||
            document.querySelector('.ql-editor');
   }
@@ -148,10 +177,14 @@ class GeminiFlowDOMActions {
   }
 
   hasGeneratedImage() {
-    const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"]');
+    const containers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"], div.image-container');
     if (containers.length > 0) {
       const last = containers[containers.length - 1];
       const imgs = last.querySelectorAll('img[src*="googleusercontent.com"]:not([src*="avatar"])');
+      const vids = last.querySelectorAll('video'); // Check for Google Flow video renders
+
+      if (vids.length > 0) return true;
+
       for (let i = 0; i < imgs.length; i++) {
          if (imgs[i].complete && imgs[i].naturalWidth > 300) {
            return true;

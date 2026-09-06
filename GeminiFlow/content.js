@@ -237,10 +237,10 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
       }
     }
 
-    // 6. Extract & Queue Image
+    // 6. Extract & Queue Image/Video Output
     this.ui.updateTracker(this.currentStepIndex, this.currentFlow.steps.length, "ZIPPING");
-    this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Extrayendo fotogramas maestros...`);
-    await this.extractAndQueueImages(this.currentStepIndex + 1, promptText);
+    this.ui.logTerm(`[TOMA ${this.currentStepIndex+1}] Extrayendo assets maestros...`);
+    await this.extractAndQueueMedia(this.currentStepIndex + 1, promptText);
 
     // 7. Delay before next step
     if (this.isRunning) {
@@ -283,8 +283,7 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     });
   }
 
-  async extractAndQueueImages(stepNum, promptText) {
-    // Check multiple broad selectors to find the most recent bot response container
+  async extractAndQueueMedia(stepNum, promptText) {
     const messageContainers = document.querySelectorAll('message-content, model-response, div[data-message-author="bot"], div.image-container');
     if (messageContainers.length === 0) {
       this.ui.logTerm(`ERR: No se detectó contenedor de respuesta para [TOMA ${stepNum}]`, "err");
@@ -293,92 +292,105 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
 
     const lastContainer = messageContainers[messageContainers.length - 1];
 
-    // Fallback: search the entire DOM for images if container is empty, but scoped is safer
-    let imgEls = Array.from(lastContainer.querySelectorAll('img'));
-    if (imgEls.length === 0) {
-       imgEls = Array.from(document.querySelectorAll('img[src*="googleusercontent.com"]'));
+    // First, check for <video> sources (Google Flow output)
+    const vidEls = lastContainer.querySelectorAll('video source, video');
+    const mediaUrls = [];
+    let isVideo = false;
+
+    if (vidEls.length > 0) {
+       isVideo = true;
+       vidEls.forEach(v => {
+          const src = v.src || v.currentSrc;
+          if (src && src.startsWith('http') && !mediaUrls.includes(src)) {
+             mediaUrls.push(src);
+          }
+       });
     }
 
-    const imageUrls = [];
+    // Fallback to images if no video
+    if (mediaUrls.length === 0) {
+      let imgEls = Array.from(lastContainer.querySelectorAll('img'));
+      if (imgEls.length === 0) {
+         imgEls = Array.from(document.querySelectorAll('img[src*="googleusercontent.com"]'));
+      }
 
-    for (const img of imgEls) {
-      const src = img.src;
-      const isAvatar = src.includes('avatar') || img.alt.toLowerCase().includes('profile');
+      for (const img of imgEls) {
+        const src = img.src;
+        const isAvatar = src.includes('avatar') || img.alt.toLowerCase().includes('profile');
 
-      // Strict filtering
-      if (src && src.includes('googleusercontent.com') && !isAvatar) {
+        if (src && src.includes('googleusercontent.com') && !isAvatar) {
+          if (!img.complete) {
+             await new Promise(resolve => {
+               img.onload = resolve;
+               img.onerror = resolve;
+               setTimeout(resolve, 3000);
+             });
+          }
+          if (img.naturalWidth > 0 && img.naturalWidth < 120) continue;
 
-        // Wait for image to render to verify dimensions if it's not complete
-        if (!img.complete) {
-           await new Promise(resolve => {
-             img.onload = resolve;
-             img.onerror = resolve;
-             // Safety timeout 3s per image
-             setTimeout(resolve, 3000);
-           });
+          let hqSrc = src;
+          if (hqSrc.includes('=')) {
+            hqSrc = hqSrc.replace(/=w\d+-h\d+-?[a-zA-Z0-9-]*$/, '=s2048');
+            hqSrc = hqSrc.replace(/=s\d+.*$/, '=s2048');
+          } else {
+            hqSrc += '=s2048';
+          }
+          mediaUrls.push(hqSrc);
         }
-
-        // Filter out small UI icons/badges
-        if (img.naturalWidth > 0 && img.naturalWidth < 120) continue;
-
-        let hqSrc = src;
-        if (hqSrc.includes('=')) {
-          hqSrc = hqSrc.replace(/=w\d+-h\d+-?[a-zA-Z0-9-]*$/, '=s2048');
-          hqSrc = hqSrc.replace(/=s\d+.*$/, '=s2048');
-        } else {
-          hqSrc += '=s2048';
-        }
-        imageUrls.push(hqSrc);
       }
     }
 
-    if (imageUrls.length === 0) {
+    if (mediaUrls.length === 0) {
       this.ui.logTerm(`ERR: No se detectaron nodos de renderización para [TOMA ${stepNum}]`, "err");
       return;
     }
 
-    this.ui.logTerm(`Fotograma capturado con éxito (2048px).`);
+    this.ui.logTerm(isVideo ? `Video capturado con éxito.` : `Fotograma capturado con éxito (2048px).`);
 
     this.sequencePrompts.push({
       step: stepNum,
       prompt: promptText,
-      imagesExtracted: imageUrls.length
+      mediaExtracted: mediaUrls.length,
+      type: isVideo ? "video" : "image"
     });
 
-    for (let i = 0; i < imageUrls.length; i++) {
-      const url = imageUrls[i];
+    for (let i = 0; i < mediaUrls.length; i++) {
+      const url = mediaUrls[i];
       try {
         const base64Data = await this.fetchImageViaBackground(url);
         if (base64Data) {
           const base64 = base64Data.split(',')[1];
-          const filename = `foto${stepNum}.jpg`;
+          const ext = isVideo ? 'mp4' : 'jpg';
+          const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+          const filename = `TOMA_${stepNum}.${ext}`;
           this.sequenceAssets.push({ filename, base64 });
 
-          // Auto-chain: Save generated image back into IndexedDB so next step can reference it
-          try {
-             // Convert base64 back to Blob to ingest
-             const byteCharacters = atob(base64);
-             const byteNumbers = new Array(byteCharacters.length);
-             for (let j = 0; j < byteCharacters.length; j++) {
-                byteNumbers[j] = byteCharacters.charCodeAt(j);
-             }
-             const byteArray = new Uint8Array(byteNumbers);
-             const blob = new Blob([byteArray], {type: 'image/jpeg'});
+          if (!isVideo) {
+            // Auto-chain images back to DB for future step referencing
+            try {
+               const byteCharacters = atob(base64);
+               const byteNumbers = new Array(byteCharacters.length);
+               for (let j = 0; j < byteCharacters.length; j++) {
+                  byteNumbers[j] = byteCharacters.charCodeAt(j);
+               }
+               const byteArray = new Uint8Array(byteNumbers);
+               const blob = new Blob([byteArray], {type: mimeType});
 
-             await this.db.saveAsset(`@foto${stepNum}`, blob, filename);
-             this.ui.logTerm(`[SYS] Fotograma capturado con éxito. Avanzando automáticamente...`);
-             this.ui.refreshAssetsList();
-          } catch(e) {
-             console.error("Auto-chain save failed", e);
+               await this.db.saveAsset(`@foto${stepNum}`, blob, filename);
+               this.ui.logTerm(`[SYS] Fotograma listo en Banco de Medios. Avanzando...`);
+               this.ui.refreshAssetsList();
+            } catch(e) {
+               console.error("Auto-chain save failed", e);
+            }
           }
         }
       } catch (err) {
-        console.error("Failed to fetch image", url, err);
-        this.ui.logTerm(`ERR: Falló extracción de imagen en paso ${stepNum}`, "err");
+        console.error("Failed to fetch media", url, err);
+        this.ui.logTerm(`ERR: Falló extracción de medio en paso ${stepNum}`, "err");
       }
     }
 
-    this.ui.logTerm(`SYS: Fotograma en cola para empaquetado (Total: ${this.sequenceAssets.length})`);
+    this.ui.logTerm(`SYS: Medio en cola para empaquetado (Total: ${this.sequenceAssets.length})`);
   }
 
   async packageFullSequence() {
