@@ -46,9 +46,9 @@ class GeminiFlowOrchestrator {
       return;
     }
 
-    // Inject the rigid Director breakdown prompt
+    // Inject the rigid Director breakdown prompt explicitely bound to the attached filename
     const directorPrompt = `Actúa como un Director de Fotografía y Productor Técnico de Cine de clase mundial (especialista en adaptación Live-Action 35mm estilo Alter Anime Studio).
-Analiza meticulosamente este clip de video de referencia. NO inventes acciones, personajes ni poderes que no ocurran en el clip.
+Analiza meticulosamente este clip de video adjunto @${videoFile.name}. NO inventes acciones, personajes ni poderes que no ocurran en el clip.
 
 Realiza un desglose cronológico exacto cuadro a cuadro:
 1. LISTA DE ENTIDADES:
@@ -67,9 +67,10 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
    Entrega los prompts estructurados listos para replicar este clip exacto en imagen fotorrealista y secuencia de video.`;
 
     await this.dom.injectText(directorPrompt);
-    this.ui.logTerm("Prompt de Director IA inyectado.");
+    this.ui.logTerm("Prompt de Director IA inyectado con anclaje al archivo.");
 
-    // Execute send
+    // Execute send with an extra buffer to ensure file mapping binds
+    await new Promise(r => setTimeout(r, 1000));
     this.ui.logTerm("Solicitando desglose técnico a Gemini...");
     await this.dom.clickSend();
 

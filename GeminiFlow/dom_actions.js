@@ -238,7 +238,7 @@ class GeminiFlowDOMActions {
        targetInput.dispatchEvent(new Event('change', { bubbles: true }));
 
        // Wait for the thumbnail preview to appear (heuristic)
-       await this.waitForThumbnail();
+       await this.waitForThumbnail(file.name);
        await new Promise(r => setTimeout(r, 1500));
        return true;
     } else {
@@ -254,25 +254,38 @@ class GeminiFlowDOMActions {
        const pasteEvent = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: dt });
        editor.dispatchEvent(pasteEvent);
 
-       await this.waitForThumbnail();
+       await this.waitForThumbnail(file.name);
        await new Promise(r => setTimeout(r, 1500));
        return true;
     }
   }
 
-  async waitForThumbnail() {
-    // Look for generic thumbnail containers in the input area
-    // This varies heavily, but often they add an img or a div with background-image inside the prompt wrapper
-    // We'll wait up to 5 seconds
+  async waitForThumbnail(filename = null) {
+    // Wait for upload progress to finish and the badge to mount
+    // Videos take much longer to upload natively than images
     return new Promise((resolve) => {
       let attempts = 0;
       const interval = setInterval(() => {
         attempts++;
-        // Looking for close buttons or generic image/video thumbnails in the prompt bar
-        const thumbnails = document.querySelectorAll('button[aria-label*="Remove image"], button[aria-label*="Quitar"], img[src^="blob:"], video[src^="blob:"]');
-        if (thumbnails.length > 0 || attempts > 20) {
+
+        let found = false;
+
+        // Check for specific filename chip if provided
+        if (filename) {
+           const spans = document.querySelectorAll('span, div, chip, .mat-chip');
+           const match = Array.from(spans).find(el => el.textContent.trim() === filename || el.textContent.includes(filename));
+           if (match) found = true;
+        }
+
+        // Generic fallback check
+        if (!found) {
+           const thumbnails = document.querySelectorAll('button[aria-label*="Remove image"], button[aria-label*="Quitar"], img[src^="blob:"], video[src^="blob:"]');
+           if (thumbnails.length > 0) found = true;
+        }
+
+        if (found || attempts > 60) { // 15 seconds max (60 * 250ms) to allow large videos to process
           clearInterval(interval);
-          resolve(); // Resolve anyway after 5s to avoid complete stall
+          resolve();
         }
       }, 250);
     });
