@@ -122,6 +122,23 @@ class GeminiFlowDOMActions {
     }
   }
 
+  async configureOutputQuantity() {
+    // Attempt to locate and click the variant quantity selector to force x1 (Save memory/time)
+    const quantityBtn = document.querySelector('button[aria-label*="variant"], div[role="button"][aria-label*="variant"], button[aria-label*="cantidad"], div[role="button"][aria-label*="cantidad"]');
+    if (quantityBtn) {
+      quantityBtn.click();
+      await new Promise(r => setTimeout(r, 500));
+      const items = document.querySelectorAll('li, div');
+      const x1Btn = Array.from(items).find(el => el.textContent.trim() === '1' || el.textContent.trim().toLowerCase() === 'x1');
+      if (x1Btn) {
+         x1Btn.click();
+      } else {
+         document.body.click(); // close menu
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
   getEditor() {
     if (this.cachedEditor) return this.cachedEditor;
 

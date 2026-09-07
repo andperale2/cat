@@ -47,24 +47,19 @@ class GeminiFlowOrchestrator {
     }
 
     // Inject the rigid Director breakdown prompt explicitely bound to the attached filename
-    const directorPrompt = `Actúa como un Director de Fotografía y Productor Técnico de Cine de clase mundial (especialista en adaptación Live-Action 35mm estilo Alter Anime Studio).
-Analiza meticulosamente este clip de video adjunto @${videoFile.name}. NO inventes acciones, personajes ni poderes que no ocurran en el clip.
+    const directorPrompt = `Actúa como un Director de Fotografía y Motor de Interpolación Keyframe I2V (Image-to-Video).
+Analiza meticulosamente este clip de video adjunto @${videoFile.name}. Desglosa la secuencia cronológica en exactamente 4 planos clave.
+Asume que los fotogramas de entrada (Keyframes) ya existen y están nombrados cronológicamente como: @1.jpg, @2.jpg, @5.jpg, @4.jpg.
 
-Realiza un desglose cronológico exacto cuadro a cuadro:
-1. LISTA DE ENTIDADES:
-   - @1: Personaje A (rol y vestuario exacto)
-   - @2: Personaje B (rol y vestuario exacto)
-   - @ARENA: Escenario / entorno con iluminación física real.
+Para cada plano, no describas a los personajes físicamente de nuevo. Concéntrate EXCLUSIVAMENTE en el movimiento de cámara, la acción física o los efectos ambientales, usando estrictamente este formato exacto:
 
-2. DESGLOSE TÉCNICO DE PLANOS (Timecodes exactos 0-2s, 2-4s, etc.):
-   - Tipo de plano (primer plano, plano medio, picado, tracking).
-   - Movimiento exacto de cámara (handheld sutil, órbita, whip-pan, push-in).
-   - Gestos y microexpresiones reales de los actores (mirada, parpadeo, tensión muscular).
-   - Coreografía física (dirección exacta de golpes, bloqueos, trayectoria de pies).
-   - Física de efectos (cuándo aparece y desaparece exactamente el hielo/energía, sin efectos permanentes).
+GUION TÉCNICO
+1. Animate strictly from @1.jpg. [Movimiento de cámara]. [Efectos físicos/ambientales: hielo, respiración, etc.]. Maintain identical facial structure, costume, and anatomy from @startframe. Zero character mutation.
+2. Animate strictly from @2.jpg. [Movimiento de cámara]. [Efectos físicos/ambientales: fuego, etc.]. Maintain identical facial structure, costume, and anatomy from @startframe. Zero character mutation.
+3. Animate strictly from @5.jpg. [Movimiento de cámara]. [Efectos físicos/ambientales: fuego envolvente, etc.]. Maintain identical facial structure, costume, and anatomy from @startframe. Zero character mutation.
+4. Animate strictly from @4.jpg. [Movimiento de cámara]. [Efectos físicos/ambientales: vapor, humo, etc.]. Maintain identical facial structure, costume, and anatomy from @startframe. Zero character mutation.
 
-3. GUION TÉCNICO LISTO PARA EJECUCIÓN:
-   Entrega los prompts estructurados listos para replicar este clip exacto en imagen fotorrealista y secuencia de video.`;
+Cíñete estrictamente al movimiento que ocurre en el video adjunto y utiliza la plantilla rígida de "Animate strictly from..." en inglés.`;
 
     await this.dom.injectText(directorPrompt);
     this.ui.logTerm("Prompt de Director IA inyectado con anclaje al archivo.");
@@ -128,6 +123,11 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
     this.ui.setRunningState(true);
     this.ui.resetTimer();
     this.ui.startTimer();
+
+    // Configure Native Settings
+    await this.dom.bypassModal();
+    await this.dom.configureVideoSettings();
+    await this.dom.configureOutputQuantity();
 
     this.ui.logTerm(`SYS: Motor Iniciado -> ${this.currentFlow.name}`, "sys");
     this.executeStep();
@@ -236,17 +236,6 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
                            .replace(/\b(bakugo|goku|naruto)\b/gi, 'athletic male subject in stylized tactical wear')
                            .replace(/\b(my hero academia|boku no hero|dragon ball|naruto shippuden)\b/gi, 'cinematic live-action adaptation');
 
-    // Concise Enforcer and Guardrails to avoid Safety filter truncations
-    const singleFrameEnforcer = "Genera una imagen: ";
-    if (!promptText.includes("Genera una imagen:")) {
-      promptText = singleFrameEnforcer + promptText;
-    }
-
-    const antiMutationStr = " Avoid: comic panels, split screen, text, extra limbs, fused fingers, distorted anatomy.";
-    if (!promptText.includes("distorted anatomy")) {
-      promptText += antiMutationStr;
-    }
-
     // Extract strictly unique shortcodes using word boundaries, allowing file extensions (e.g. @1.jpg)
     const rawMatches = promptText.match(/\@[a-zA-Z0-9_.-]+\b/g) || [];
     const uniqueShortcodes = [...new Set(rawMatches)];
@@ -257,6 +246,10 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
       const asset = await this.db.getAsset(code);
       if (asset) {
         assetsToInject.push(asset);
+        // I2V Enforcer: Explicitly bind the startframe reference if the prompt asks for it
+        if (promptText.includes('@startframe')) {
+           promptText = promptText.replace(/@startframe/g, code);
+        }
       }
     }
 
@@ -294,7 +287,10 @@ Realiza un desglose cronológico exacto cuadro a cuadro:
         await this.dom.prepareCanvas();
 
         // Construct ultra-safe fallback
-        let fallbackPrompt = "Genera una imagen: Cinematic film photograph of the athletic subject in @1 within a stadium arena. Hyper-realistic skin textures, natural fabric weave, dramatic 35mm film lighting, anamorphic lens flare, shallow depth of field. 8k resolution, authentic live-action aesthetic. Avoid: text, illustrations.";
+        let fallbackPrompt = "Animate strictly from @startframe. Slow cinematic camera pan. Cinematic live-action film aesthetic, dramatic lighting, high-quality production.";
+        if (assetsToInject.length > 0) {
+            fallbackPrompt = fallbackPrompt.replace(/@startframe/g, uniqueShortcodes[0]);
+        }
 
         // Re-inject identical assets
         for (const asset of assetsToInject) {
