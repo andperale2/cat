@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-cyan-studio: #00E5FF;
+  --color-cyan-glow: rgba(0, 229, 255, 0.4);
+  --color-orange-studio: #FF7B00;
+  --color-red-studio: #FF2A2A;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+}
+
+:root {
+  --background: #09090b; /* zinc-950 */
+  --foreground: #e4e4e7; /* zinc-200 */
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* App-like feel */
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00E5FF;
+}
+
+/* Base utility classes for Studio Look */
+@layer utilities {
+  .panel-glass {
+    @apply bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg shadow-xl;
+  }
+  .input-studio {
+    @apply w-full bg-black/50 border border-zinc-800 rounded-md p-2 text-cyan-studio font-mono text-xs focus:outline-none focus:border-cyan-studio transition-colors;
+  }
+  .btn-studio {
+    @apply flex items-center justify-center gap-2 px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider transition-all;
+  }
+  .btn-primary {
+    @apply flex items-center justify-center gap-2 px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider transition-all bg-cyan-studio text-black hover:bg-cyan-400 hover:shadow-[0_0_15px_rgba(0,229,255,0.4)];
+  }
+  .btn-secondary {
+    @apply flex items-center justify-center gap-2 px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider transition-all bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700;
+  }
+  .btn-danger {
+    @apply flex items-center justify-center gap-2 px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider transition-all bg-red-studio/10 text-red-studio border border-red-studio/40 hover:bg-red-studio/20;
+  }
+}
