@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Image as ImageIcon, Play, Save, Download, Video, Crosshair, Search, Loader2 } from "lucide-react";
 import Timeline, { Shot } from "@/components/Timeline";
+import { assemblePrompt } from "@/lib/engine";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("MEDIA");
@@ -33,7 +34,12 @@ export default function Home() {
 
       const data = await res.json();
       if (data.shots) {
-        setShots(data.shots);
+        // Automatically assemble the strict 7-block formatting for every shot upon load
+        const assembledShots = data.shots.map((shot: Shot) => ({
+          ...shot,
+          finalPrompt: assemblePrompt(shot, data.entities_detected)
+        }));
+        setShots(assembledShots);
       }
     } catch (error) {
       console.error(error);
@@ -43,12 +49,12 @@ export default function Home() {
     }
   };
 
-  const handleUpdatePrompt = (id: number, newPrompt: string) => {
-    setShots(shots.map(s => s.id === id ? { ...s, motion_prompt: newPrompt } : s));
+  const handleUpdatePrompt = (slotId: number, newPrompt: string) => {
+    setShots(shots.map(s => s.slot_id === slotId ? { ...s, finalPrompt: newPrompt } : s));
   };
 
-  const handleDeleteShot = (id: number) => {
-    setShots(shots.filter(s => s.id !== id));
+  const handleDeleteShot = (slotId: number) => {
+    setShots(shots.filter(s => s.slot_id !== slotId));
   };
 
   return (
