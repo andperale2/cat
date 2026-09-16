@@ -1,0 +1,294 @@
+/* Kino-Light Tizen TV Optimized Stylesheet */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background-color: #0b0e14;
+    color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Base Layout */
+.app-layout {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 280px;
+    background-color: #121824;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #1e293b;
+}
+
+.brand h2 {
+    color: #38bdf8;
+    font-size: 1.8rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.nav-item {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: #94a3b8;
+    padding: 14px 20px;
+    font-size: 1.2rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-item.active {
+    color: #ffffff;
+    background-color: #1e293b;
+}
+
+.nav-item.focused, .nav-item:focus {
+    background-color: #38bdf8;
+    color: #0f172a;
+    border-color: #ffffff;
+    transform: scale(1.03);
+    outline: none;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+}
+
+/* Content Area */
+.content-area {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.content-header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 30px;
+    color: #f8fafc;
+}
+
+.catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 30px;
+}
+
+.media-card {
+    background-color: #1e293b;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+}
+
+.media-card img {
+    width: 100%;
+    height: 310px;
+    object-fit: cover;
+}
+
+.media-card .card-info {
+    padding: 15px;
+}
+
+.media-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-card.focused, .media-card:focus {
+    border-color: #38bdf8;
+    transform: scale(1.08);
+    box-shadow: 0 10px 25px rgba(56, 189, 248, 0.4);
+    outline: none;
+    z-index: 10;
+}
+
+/* Modal Details */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(11, 14, 20, 0.95);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    width: 85%;
+    max-width: 1200px;
+    background-color: #121824;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+    border: 1px solid #334155;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+.detail-backdrop {
+    width: 50%;
+    background-size: cover;
+    background-position: center;
+    min-height: 500px;
+}
+
+.detail-body {
+    width: 50%;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.detail-body h1 {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+}
+
+.detail-meta {
+    color: #38bdf8;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+}
+
+.detail-synopsis {
+    color: #cbd5e1;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 20px;
+}
+
+.btn {
+    padding: 14px 28px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: #38bdf8;
+    color: #0f172a;
+}
+
+.btn-secondary {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+.btn.focused, .btn:focus {
+    border-color: #ffffff;
+    transform: scale(1.08);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+    outline: none;
+}
+
+/* Video Player */
+.player-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000000;
+    z-index: 200;
+}
+
+#html5-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.player-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: opacity 0.4s ease;
+}
+
+.player-controls.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.player-header h2 {
+    font-size: 1.8rem;
+}
+
+.player-progress-container {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.player-progress-bar {
+    width: 0%;
+    height: 100%;
+    background-color: #38bdf8;
+}
+
+.player-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.player-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.btn-control {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.hidden {
+    display: none !important;
+}
