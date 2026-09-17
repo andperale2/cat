@@ -1,15 +1,15 @@
 @echo off
-:: ========================================================================
-:: GAMELOOP & TENCENT DEEP CLEANER - LANZADOR AUTOMATICO (BAT + POWERSHELL)
-:: ========================================================================
-
 title GameLoop Cleaner Launcher
 
-:: Verificar privilegios de Administrador
+:: Comprobar permisos de Administrador
 net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo [*] Solicitando permisos de Administrador...
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+if %errorlevel% neq 0 (
+    echo ========================================================================
+    echo  Solicitando permisos de Administrador (UAC)...
+    echo  Por favor acepta el mensaje de confirmacion en pantalla.
+    echo ========================================================================
+    echo.
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/k \"\"%~f0\" admin\"' -Verb RunAs"
     exit /b
 )
 
@@ -21,7 +21,6 @@ echo ========================================================================
 echo.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
-    $Host.UI.RawUI.WindowTitle = 'GameLoop Cleaner (PowerShell Direct)'
     $log = Join-Path $PSScriptRoot 'cleanup_log.txt'
     '=== Inicio de Limpieza GameLoop / Tencent ===' | Out-File $log
 
@@ -88,9 +87,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
     }
 
     Log '=== PASO 5: Finalizado ===' 'Cyan'
-    Log ('[+] Limpieza completada. Log guardado en: ' + $log) 'Green'
+    Log ('[+] Limpieza completada exitosamente. Log guardado en: ' + $log) 'Green'
 }"
 
 echo.
-echo Presione cualquier tecla para salir...
+echo ========================================================================
+echo  Proceso finalizado. Presione cualquier tecla para salir...
+echo ========================================================================
 pause >nul

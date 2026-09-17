@@ -30,6 +30,8 @@ namespace GameLoopCleaner
                     WriteColor("[-] Este programa requiere privilegios de Administrador.", ConsoleColor.Red);
                     WriteColor("[*] Intentando reiniciar con privilegios elevados (UAC)...", ConsoleColor.Yellow);
                     ElevateToAdmin();
+                    Console.WriteLine("\nPresione ENTER para salir de esta ventana...");
+                    Console.ReadLine();
                     return;
                 }
 
@@ -66,7 +68,7 @@ namespace GameLoopCleaner
             }
             finally
             {
-                Console.WriteLine("\nPresione ENTER para salir...");
+                Console.WriteLine("\nPresione ENTER para salir de la ventana...");
                 Console.ReadLine();
             }
         }
@@ -93,11 +95,13 @@ namespace GameLoopCleaner
         {
             try
             {
+                string location = Assembly.GetExecutingAssembly().Location;
                 ProcessStartInfo proc = new ProcessStartInfo
                 {
                     UseShellExecute = true,
-                    WorkingDirectory = Environment.CurrentDirectory,
-                    FileName = Assembly.GetExecutingAssembly().Location,
+                    WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory,
+                    FileName = "cmd.exe",
+                    Arguments = "/k \"" + location + "\"",
                     Verb = "runas"
                 };
                 Process.Start(proc);
