@@ -22,7 +22,7 @@ echo Usando compilador: %CSC_PATH%
 echo Compilando Program.cs y app.manifest...
 echo.
 
-"%CSC_PATH%" /target:exe /win32manifest:app.manifest /out:GameLoopCleaner.exe Program.cs /r:System.ServiceProcess.dll
+"%CSC_PATH%" /noconfig /target:exe /win32manifest:app.manifest /out:GameLoopCleaner.exe Program.cs /r:System.dll /r:System.Core.dll /r:System.ServiceProcess.dll
 
 if %ERRORLEVEL% EQU 0 (
     echo.
@@ -31,7 +31,7 @@ if %ERRORLEVEL% EQU 0 (
     echo.
 ) else (
     echo.
-    echo [ERROR] Hubo un error durante la compilacion.
+    echo [ERROR] Hubo un error durante la compilacion. Revisa los mensajes de arriba.
     echo.
 )
 

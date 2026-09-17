@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -19,57 +18,74 @@ namespace GameLoopCleaner
 
         static void Main(string[] args)
         {
-            Console.Title = "GameLoop & Tencent Deep Cleaner - Senior Windows Tool";
-            logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cleanup_log.txt");
-
-            PrintHeader();
-
-            if (!IsAdministrator())
+            try
             {
-                WriteColor("[-] Este programa requiere privilegios de Administrador.", ConsoleColor.Red);
-                WriteColor("[*] Intentando reiniciar con privilegios elevados (UAC)...", ConsoleColor.Yellow);
-                ElevateToAdmin();
-                return;
+                Console.Title = "GameLoop & Tencent Deep Cleaner - Senior Windows Tool";
+                logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cleanup_log.txt");
+
+                PrintHeader();
+
+                if (!IsAdministrator())
+                {
+                    WriteColor("[-] Este programa requiere privilegios de Administrador.", ConsoleColor.Red);
+                    WriteColor("[*] Intentando reiniciar con privilegios elevados (UAC)...", ConsoleColor.Yellow);
+                    ElevateToAdmin();
+                    return;
+                }
+
+                WriteColor("[+] Ejecutando con permisos de Administrador.", ConsoleColor.Green);
+                Log("=== Inicio de Limpieza GameLoop / Tencent ===");
+                Log("Fecha y hora: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                Console.WriteLine();
+                WriteColor("=== PASO 1: Creando Punto de Restauracion del Sistema / Respaldo ===", ConsoleColor.Cyan);
+                CreateSystemRestorePoint();
+
+                Console.WriteLine();
+                WriteColor("=== PASO 2: Deteniendo y Eliminando Servicios y Procesos ===", ConsoleColor.Cyan);
+                KillProcessesAndServices();
+
+                Console.WriteLine();
+                WriteColor("=== PASO 3: Limpieza Profunda del Sistema de Archivos (C:, D:, E:) ===", ConsoleColor.Cyan);
+                CleanFileSystem();
+
+                Console.WriteLine();
+                WriteColor("=== PASO 4: Limpieza Profunda del Registro de Windows (Regedit) ===", ConsoleColor.Cyan);
+                CleanRegistry();
+
+                Console.WriteLine();
+                WriteColor("=== PASO 5: Finalizando y Guardando Reporte ===", ConsoleColor.Cyan);
+                SaveLogFile();
+
+                WriteColor("\n[+] Proceso de limpieza completado con exito.", ConsoleColor.Green);
+                WriteColor("[i] El archivo de registro detallado se ha guardado en: " + logFilePath, ConsoleColor.Yellow);
             }
-
-            WriteColor("[+] Ejecutando con permisos de Administrador.", ConsoleColor.Green);
-            Log("=== Inicio de Limpieza GameLoop / Tencent ===");
-            Log("Fecha y hora: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-
-            Console.WriteLine();
-            WriteColor("=== PASO 1: Creando Punto de Restauracion del Sistema / Respaldo ===", ConsoleColor.Cyan);
-            CreateSystemRestorePoint();
-
-            Console.WriteLine();
-            WriteColor("=== PASO 2: Deteniendo y Eliminando Servicios y Procesos ===", ConsoleColor.Cyan);
-            KillProcessesAndServices();
-
-            Console.WriteLine();
-            WriteColor("=== PASO 3: Limpieza Profunda del Sistema de Archivos (C:, D:, E:) ===", ConsoleColor.Cyan);
-            CleanFileSystem();
-
-            Console.WriteLine();
-            WriteColor("=== PASO 4: Limpieza Profunda del Registro de Windows (Regedit) ===", ConsoleColor.Cyan);
-            CleanRegistry();
-
-            Console.WriteLine();
-            WriteColor("=== PASO 5: Finalizando y Guardando Reporte ===", ConsoleColor.Cyan);
-            SaveLogFile();
-
-            WriteColor("\n[✔] Proceso de limpieza completado con exito.", ConsoleColor.Green);
-            WriteColor("[i] El archivo de registro detallado se ha guardado en: " + logFilePath, ConsoleColor.Yellow);
-            Console.WriteLine("\nPresione cualquier tecla para salir...");
-            Console.ReadKey();
+            catch (Exception ex)
+            {
+                WriteColor("[-] Error general inesperado: " + ex.ToString(), ConsoleColor.Red);
+            }
+            finally
+            {
+                Console.WriteLine("\nPresione ENTER para salir...");
+                Console.ReadLine();
+            }
         }
 
         #region Helpers & UI
 
         private static bool IsAdministrator()
         {
-            using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+            try
             {
-                WindowsPrincipal principal = new WindowsPrincipal(identity);
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+                using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+                {
+                    WindowsPrincipal principal = new WindowsPrincipal(identity);
+                    return principal.IsInRole(WindowsBuiltInRole.Administrator);
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -262,16 +278,14 @@ namespace GameLoopCleaner
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
 
             // AppData / User specific
             directTargetPaths.Add(Path.Combine(appData, "Tencent"));
             directTargetPaths.Add(Path.Combine(localAppData, "Tencent"));
             directTargetPaths.Add(Path.Combine(userProfile, ".GameLoopBox"));
-            directTargetPaths.Add(Path.Combine(localAppData, "Temp\\Tencent"));
-            directTargetPaths.Add(Path.Combine(winDir, "Temp\\Tencent"));
+            directTargetPaths.Add(Path.Combine(localAppData, @"Temp\Tencent"));
+            directTargetPaths.Add(Path.Combine(winDir, @"Temp\Tencent"));
 
             // Root system / drives specific
             string[] driveLetters = new string[] { "C:\\", "D:\\", "E:\\" };
@@ -279,22 +293,26 @@ namespace GameLoopCleaner
             {
                 if (Directory.Exists(drive))
                 {
-                    directTargetPaths.Add(Path.Combine(drive, "Program Files\\Tencent"));
-                    directTargetPaths.Add(Path.Combine(drive, "Program Files (x86)\\Tencent"));
-                    directTargetPaths.Add(Path.Combine(drive, "Program Files\\TxGameAssistant"));
-                    directTargetPaths.Add(Path.Combine(drive, "Program Files (x86)\\TxGameAssistant"));
-                    directTargetPaths.Add(Path.Combine(drive, "ProgramData\\Tencent"));
-                    directTargetPaths.Add(Path.Combine(drive, "ProgramData\\TxGameAssistant"));
+                    directTargetPaths.Add(Path.Combine(drive, @"Program Files\Tencent"));
+                    directTargetPaths.Add(Path.Combine(drive, @"Program Files (x86)\Tencent"));
+                    directTargetPaths.Add(Path.Combine(drive, @"Program Files\TxGameAssistant"));
+                    directTargetPaths.Add(Path.Combine(drive, @"Program Files (x86)\TxGameAssistant"));
+                    directTargetPaths.Add(Path.Combine(drive, @"ProgramData\Tencent"));
+                    directTargetPaths.Add(Path.Combine(drive, @"ProgramData\TxGameAssistant"));
                     directTargetPaths.Add(Path.Combine(drive, "TxGameAssistant"));
                     directTargetPaths.Add(Path.Combine(drive, "GameLoop"));
-                    directTargetPaths.Add(Path.Combine(drive, "Temp\\Tencent"));
-                    directTargetPaths.Add(Path.Combine(drive, "Temp\\TxGameAssistant"));
+                    directTargetPaths.Add(Path.Combine(drive, @"Temp\Tencent"));
+                    directTargetPaths.Add(Path.Combine(drive, @"Temp\TxGameAssistant"));
                 }
             }
 
             // Clean direct targets
-            foreach (string target in directTargetPaths.Distinct())
+            List<string> processed = new List<string>();
+            foreach (string target in directTargetPaths)
             {
+                if (processed.Contains(target.ToLower())) continue;
+                processed.Add(target.ToLower());
+
                 if (Directory.Exists(target))
                 {
                     ForceDeleteDirectory(target);
@@ -309,7 +327,7 @@ namespace GameLoopCleaner
             try
             {
                 string usersDir = Path.GetDirectoryName(userProfile);
-                if (Directory.Exists(usersDir))
+                if (!string.IsNullOrEmpty(usersDir) && Directory.Exists(usersDir))
                 {
                     string[] userDirs = Directory.GetDirectories(usersDir);
                     foreach (string uDir in userDirs)
@@ -330,7 +348,9 @@ namespace GameLoopCleaner
                 string prefetchDir = Path.Combine(winDir, "Prefetch");
                 if (Directory.Exists(prefetchDir))
                 {
-                    string[] prefetchFiles = Directory.GetFiles(prefetchDir, "*GAMELOOP*").Concat(Directory.GetFiles(prefetchDir, "*TENCENT*")).ToArray();
+                    List<string> prefetchFiles = new List<string>();
+                    prefetchFiles.AddRange(Directory.GetFiles(prefetchDir, "*GAMELOOP*"));
+                    prefetchFiles.AddRange(Directory.GetFiles(prefetchDir, "*TENCENT*"));
                     foreach (string pf in prefetchFiles)
                     {
                         ForceDeleteFile(pf);
