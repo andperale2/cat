@@ -1,0 +1,116 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #121212;
+    color: #ffffff;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow: hidden; /* Prevent scrollbars on TV */
+}
+
+#app {
+    display: flex;
+    width: 1920px;
+    height: 1080px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Sidebar Menu */
+.sidebar {
+    width: 350px;
+    background-color: #1a1a1a;
+    padding: 40px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo img {
+    width: 150px;
+    height: auto;
+    margin-bottom: 60px;
+}
+
+.menu {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+}
+
+.menu li {
+    padding: 20px 40px;
+    font-size: 28px;
+    color: #a0a0a0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Main Content Area */
+.main-content {
+    flex: 1;
+    padding: 60px;
+    background-color: #121212;
+}
+
+h1 {
+    font-size: 48px;
+    margin-top: 0;
+    margin-bottom: 40px;
+    font-weight: 300;
+}
+
+.section-title {
+    font-size: 32px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    color: #e5e5e5;
+}
+
+.carousel {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 60px;
+}
+
+.item {
+    width: 250px;
+    height: 375px;
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+    border: 4px solid transparent;
+}
+
+.placeholder-poster {
+    font-size: 24px;
+    color: #888;
+}
+
+/* FOCUS STYLES - Crucial for TV Remote Navigation */
+.focusable {
+    /* Basic style for anything that can be focused */
+}
+
+/* Focused State */
+.focusable.focused {
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.menu li.focused {
+    background-color: #333;
+    color: #ffffff;
+    font-weight: bold;
+    border-left: 6px solid #e50914; /* Netflix-like red highlight */
+}
+
+.item.focused {
+    border-color: #e50914;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    background-color: #3a3a3a;
+}
