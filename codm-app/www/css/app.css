@@ -1,0 +1,240 @@
+/* CODM META Armero - Estilos Militares Tácticos HUD */
+
+:root {
+    --codm-bg: #090a0f;
+    --codm-card: #141721;
+    --codm-card-hover: #1b202e;
+    --codm-border: rgba(102, 252, 241, 0.2);
+    --codm-cyan: #66fcf1;
+    --codm-green: #45a29e;
+    --codm-gold: #f39c12;
+    --codm-red: #ff4655;
+    --codm-text: #e6e8eb;
+    --codm-muted: #8b949e;
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--codm-bg);
+    color: var(--codm-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+    padding-bottom: 74px; /* espacio para la barra de navegación inferior */
+}
+
+/* Patrón militar de fondo */
+.military-bg {
+    background-color: #0b0c10;
+    background-image: radial-gradient(#1f2833 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Tarjetas con HUD militar */
+.hud-card {
+    background: linear-gradient(135deg, rgba(20, 24, 33, 0.95) 0%, rgba(11, 13, 18, 0.98) 100%);
+    border: 1px solid var(--codm-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    position: relative;
+    overflow: hidden;
+}
+
+.hud-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    border-top: 2px solid var(--codm-cyan);
+    border-left: 2px solid var(--codm-cyan);
+}
+
+.hud-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 6px;
+    height: 6px;
+    border-bottom: 2px solid var(--codm-cyan);
+    border-right: 2px solid var(--codm-cyan);
+}
+
+/* Indicador de imagen no disponible */
+.image-unavailable {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px dashed rgba(102, 252, 241, 0.25);
+    border-radius: 6px;
+    color: var(--codm-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px;
+    text-align: center;
+}
+
+/* Barra de navegación inferior móvil/tablet */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(11, 12, 16, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(102, 252, 241, 0.3);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: #8b949e;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    padding: 6px 0;
+}
+
+.nav-item svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    margin-bottom: 3px;
+    transition: transform 0.2s ease;
+}
+
+.nav-item.active {
+    color: var(--codm-cyan);
+}
+
+.nav-item.active svg {
+    transform: scale(1.15);
+}
+
+/* Barras de estadísticas */
+.stat-meter {
+    background: rgba(255, 255, 255, 0.08);
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.stat-meter-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--codm-green) 0%, var(--codm-cyan) 100%);
+    transition: width 0.3s ease;
+}
+
+.stat-meter-diff-pos {
+    background: #2ecc71;
+}
+
+.stat-meter-diff-neg {
+    background: #e74c3c;
+}
+
+/* Botones tácticos */
+.btn-tac {
+    background: rgba(102, 252, 241, 0.1);
+    border: 1px solid var(--codm-cyan);
+    color: var(--codm-cyan);
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-tac:active {
+    background: var(--codm-cyan);
+    color: #000;
+    transform: scale(0.98);
+}
+
+/* Toast */
+#toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--codm-cyan);
+    color: #0b0c10;
+    font-weight: 800;
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(102, 252, 241, 0.4);
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+#toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+/* Optimizaciones de layout para tablet (Xiaomi Pad Pro 12.1" / pantallas grandes) */
+@media (min-width: 900px) {
+    .tablet-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .tablet-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    .tablet-grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+    .bottom-nav {
+        max-width: 600px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 16px 16px 0 0;
+        border: 1px solid rgba(102, 252, 241, 0.4);
+        border-bottom: none;
+    }
+    .max-tablet-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
+    }
+}

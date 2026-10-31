@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CODM META Armero</title>
+    <link rel="stylesheet" href="css/app.css">
+    <!-- Tailwind CSS (Offline-safe local styling with inline utility styles fallback) -->
+    <style>
+        /* Estilos complementarios y de layout nativo */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .p-2 { padding: 8px; }
+        .p-3 { padding: 12px; }
+        .p-4 { padding: 16px; }
+        .p-5 { padding: 20px; }
+        .px-3 { padding-left: 12px; padding-right: 12px; }
+        .py-1 { padding-top: 4px; padding-bottom: 4px; }
+        .py-2 { padding-top: 8px; padding-bottom: 8px; }
+        .rounded { border-radius: 6px; }
+        .rounded-lg { border-radius: 10px; }
+        .rounded-full { border-radius: 9999px; }
+        .w-full { width: 100%; }
+        .text-xs { font-size: 11px; }
+        .text-sm { font-size: 13px; }
+        .text-base { font-size: 15px; }
+        .text-lg { font-size: 18px; }
+        .text-xl { font-size: 20px; }
+        .text-2xl { font-size: 24px; }
+        .font-bold { font-weight: 700; }
+        .font-black { font-weight: 900; }
+        .uppercase { text-transform: uppercase; }
+        .tracking-wider { letter-spacing: 0.05em; }
+        .border-b { border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .hidden { display: none !important; }
+
+        .badge-verified {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.4);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+        }
+
+        .badge-pending {
+            background: rgba(243, 156, 18, 0.15);
+            color: #f39c12;
+            border: 1px solid rgba(243, 156, 18, 0.4);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+        }
+
+        .filter-chip {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #8b949e;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-chip.active {
+            background: var(--codm-cyan);
+            color: #0b0c10;
+            border-color: var(--codm-cyan);
+        }
+
+        .search-box {
+            background: rgba(20, 24, 33, 0.9);
+            border: 1px solid rgba(102, 252, 241, 0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            width: 100%;
+            outline: none;
+            font-size: 13px;
+        }
+
+        .search-box:focus {
+            border-color: var(--codm-cyan);
+            box-shadow: 0 0 10px rgba(102, 252, 241, 0.2);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-content {
+            background: #141721;
+            border: 1px solid var(--codm-cyan);
+            border-radius: 12px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body class="military-bg">
+
+    <!-- CABECERA SUPERIOR MILITAR HUD -->
+    <header class="p-4 border-b flex items-center justify-between" style="background: rgba(11, 12, 16, 0.9);">
+        <div class="flex items-center gap-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--codm-cyan);">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="22" y1="12" x2="18" y2="12"></line>
+                <line x1="6" y1="12" x2="2" y2="12"></line>
+                <line x1="12" y1="6" x2="12" y2="2"></line>
+                <line x1="12" y1="22" x2="12" y2="18"></line>
+            </svg>
+            <div>
+                <h1 class="text-base font-black tracking-wider uppercase" style="margin: 0; color: #fff;">
+                    CODM <span style="color: var(--codm-cyan);">META ARMERO</span>
+                </h1>
+                <span class="text-xs" style="color: var(--codm-muted);">COMPATIBLE ANDROID 15 & 16 • XIAOMI PAD PRO 12.1"</span>
+            </div>
+        </div>
+        <div id="statusIndicator" class="badge-verified flex items-center gap-2">
+            <span>OFFLINE LISTO</span>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="max-tablet-container p-4" style="min-height: calc(100vh - 140px);">
+
+        <!-- ==================== SECCIÓN 1: INICIO ==================== -->
+        <section id="sec-home" class="view-section">
+            <div class="hud-card p-5" style="margin-bottom: 20px;">
+                <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+                    <span class="badge-verified">BASE ORIGINAL VERIFICADA</span>
+                    <span class="text-xs" style="color: var(--codm-muted);">PDF OFICIAL (344 PÁG)</span>
+                </div>
+                <h2 class="text-xl font-black uppercase" style="color: #fff; margin: 0 0 8px 0;">
+                    Armero Competitivo <span style="color: var(--codm-cyan);">2026</span>
+                </h2>
+                <p class="text-xs" style="color: var(--codm-muted); line-height: 1.5; margin: 0 0 16px 0;">
+                    Catálogo oficial de armas, 9 ranuras analizadas, clases META para corta, media y larga distancia, y constructor interactivo con cálculo acumulativo verificado.
+                </p>
+                <div class="flex gap-2" style="flex-wrap: wrap;">
+                    <button onclick="navigate('weapons')" class="btn-tac">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M2 12h20M12 2v20"/></svg>
+                        Explorar Armas
+                    </button>
+                    <button onclick="navigate('gunsmith')" class="btn-tac" style="border-color: var(--codm-gold); color: var(--codm-gold);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Mi Armero (5 Accesorios)
+                    </button>
+                </div>
+            </div>
+
+            <h3 class="text-xs font-bold uppercase tracking-wider" style="color: var(--codm-muted); margin-bottom: 12px;">
+                Códigos META Verificados en CODM:
+            </h3>
+            <div id="homeVerifiedCodes" class="tablet-grid-3">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN 2: ARMAS ==================== -->
+        <section id="sec-weapons" class="view-section hidden">
+            <!-- Barra de búsqueda y filtros -->
+            <div class="flex flex-col gap-3" style="margin-bottom: 16px;">
+                <input type="text" id="weaponSearchInput" placeholder="Buscar por nombre, categoría o accesorio..." class="search-box">
+                <div class="flex gap-2" id="categoryChips" style="overflow-x: auto; padding-bottom: 4px;">
+                    <button class="filter-chip active" onclick="filterCategory('ALL')">TODAS</button>
+                    <button class="filter-chip" onclick="filterCategory('ar')">FUSILES DE ASALTO</button>
+                    <button class="filter-chip" onclick="filterCategory('smg')">SUBFUSILES</button>
+                    <button class="filter-chip" onclick="filterCategory('shotgun')">ESCOPETAS</button>
+                    <button class="filter-chip" onclick="filterCategory('sniper')">FRANCOTIRADORES</button>
+                    <button class="filter-chip" onclick="filterCategory('marksman')">TIRADOR</button>
+                    <button class="filter-chip" onclick="filterCategory('lmg')">LMG</button>
+                </div>
+            </div>
+
+            <!-- Listado de armas -->
+            <div id="weaponsListGrid" class="tablet-grid-2">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN 3: CLASES META ==================== -->
+        <section id="sec-meta" class="view-section hidden">
+            <div class="flex justify-between items-center" style="margin-bottom: 16px;">
+                <div>
+                    <h2 class="text-lg font-black uppercase" style="color: #fff; margin: 0;">Clases META 2026</h2>
+                    <p class="text-xs" style="color: var(--codm-muted); margin: 0;">Configuraciones de 5 accesorios verificadas</p>
+                </div>
+                <select id="metaDistanceSelect" onchange="renderMetaClasses()" class="search-box" style="width: auto; padding: 6px 12px;">
+                    <option value="ALL">Todas las Distancias</option>
+                    <option value="corta">Corta Distancia</option>
+                    <option value="media">Media Distancia</option>
+                    <option value="larga">Larga Distancia</option>
+                </select>
+            </div>
+            <div id="metaClassesList" class="flex flex-col gap-4">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN 4: FAVORITOS ==================== -->
+        <section id="sec-favorites" class="view-section hidden">
+            <h2 class="text-lg font-black uppercase" style="color: #fff; margin-bottom: 16px;">Mis Armamentos Favoritos</h2>
+            <div id="favoritesListGrid" class="tablet-grid-2">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN 5: MI ARMERO (CONSTRUCTOR) ==================== -->
+        <section id="sec-gunsmith" class="view-section hidden">
+            <div class="hud-card p-4" style="margin-bottom: 16px;">
+                <div class="flex justify-between items-center" style="margin-bottom: 12px;">
+                    <div>
+                        <h2 class="text-lg font-black uppercase" style="color: var(--codm-cyan); margin: 0;">Constructor de Clases</h2>
+                        <span class="text-xs" style="color: var(--codm-muted);">Exactamente 5 accesorios simultáneos</span>
+                    </div>
+                    <select id="builderWeaponSelect" onchange="onBuilderWeaponChange()" class="search-box" style="width: 200px;">
+                        <!-- Se llena dinámicamente -->
+                    </select>
+                </div>
+
+                <!-- Contador de accesorios equipados -->
+                <div class="flex items-center justify-between p-3 rounded" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(102, 252, 241, 0.2);">
+                    <span class="text-xs font-bold uppercase" style="color: #fff;">Accesorios Seleccionados:</span>
+                    <span id="equippedCounter" class="badge-verified" style="font-size: 13px;">0 / 5 EQUIPADOS</span>
+                </div>
+            </div>
+
+            <!-- Panel de 2 columnas en Tablet: Ranuras a la izquierda, Estadísticas y Recomendaciones a la derecha -->
+            <div class="tablet-grid-2">
+                <!-- Columna Izquierda: Las 9 ranuras oficiales de CODM -->
+                <div class="flex flex-col gap-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider" style="color: var(--codm-muted);">
+                        9 Ranuras del Armero Oficial:
+                    </h3>
+                    <div id="builderSlotsContainer" class="flex flex-col gap-2">
+                        <!-- 9 ranuras inyectadas dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Estadísticas comparadas acumuladas y Guardado -->
+                <div class="flex flex-col gap-3">
+                    <div class="hud-card p-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider" style="color: var(--codm-gold); margin-top: 0; margin-bottom: 12px;">
+                            Efecto Acumulado de la Clase:
+                        </h3>
+                        <div id="builderStatsSummary" class="flex flex-col gap-3">
+                            <!-- Estadísticas acumuladas verificables -->
+                        </div>
+
+                        <!-- Botones de acción del armero -->
+                        <div class="flex gap-2" style="margin-top: 20px;">
+                            <button onclick="saveCurrentCustomBuild()" class="btn-tac" style="flex: 1; justify-content: center;">
+                                Guardar en Mi Armero
+                            </button>
+                            <button onclick="resetBuilder()" class="btn-tac" style="border-color: var(--codm-red); color: var(--codm-red);">
+                                Limpiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recomendador según distancia -->
+                    <div class="hud-card p-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider" style="color: var(--codm-cyan); margin-top: 0; margin-bottom: 8px;">
+                            Recomendador Táctico Automático:
+                        </h3>
+                        <div class="flex gap-2" style="margin-bottom: 10px;">
+                            <button onclick="applyAutoRecommendation('corta')" class="filter-chip">Corta Distancia</button>
+                            <button onclick="applyAutoRecommendation('media')" class="filter-chip">Media Distancia</button>
+                            <button onclick="applyAutoRecommendation('larga')" class="filter-chip">Larga Distancia</button>
+                        </div>
+                        <p id="recommendationExplanation" class="text-xs" style="color: var(--codm-muted); margin: 0; line-height: 1.4;">
+                            Selecciona una distancia para cargar los 5 accesorios recomendados y su justificación táctica.
+                        </p>
+                    </div>
+
+                    <!-- Clases Guardadas por el usuario -->
+                    <div class="hud-card p-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider" style="color: #fff; margin-top: 0; margin-bottom: 12px;">
+                            Mis Clases Guardadas:
+                        </h3>
+                        <div id="mySavedBuildsContainer" class="flex flex-col gap-2">
+                            <!-- Clases guardadas en localStorage/IndexedDB -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL DETALLE DE ARMA / VISOR DE ACCESORIOS -->
+    <div id="weaponDetailModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center border-b" style="padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h2 id="modalWeaponName" class="text-xl font-black uppercase" style="color: #fff; margin: 0;"></h2>
+                    <span id="modalWeaponCategory" class="badge-verified" style="margin-top: 4px; display: inline-block;"></span>
+                </div>
+                <button onclick="closeWeaponModal()" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">✕</button>
+            </div>
+
+            <!-- Pestañas del modal: Ficha General / Visor de 9 Ranuras -->
+            <div class="flex gap-2" style="margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                <button onclick="switchModalTab('info')" id="modalTabInfo" class="filter-chip active">Ficha General</button>
+                <button onclick="switchModalTab('slots')" id="modalTabSlots" class="filter-chip">Visor de 9 Ranuras</button>
+            </div>
+
+            <div id="modalBodyInfo">
+                <!-- Info general del arma -->
+            </div>
+            <div id="modalBodySlots" class="hidden">
+                <!-- Visor detallado de las 9 ranuras -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SELECTOR DE ACCESORIO PARA CONSTRUCTOR -->
+    <div id="slotPickerModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="flex justify-between items-center border-b" style="padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 id="slotPickerTitle" class="text-base font-bold uppercase" style="color: var(--codm-cyan); margin: 0;">Seleccionar Accesorio</h3>
+                <button onclick="closeSlotPicker()" style="background: none; border: none; color: #fff; font-size: 18px; cursor: pointer;">✕</button>
+            </div>
+            <div id="slotPickerList" class="flex flex-col gap-2">
+                <!-- Lista de accesorios disponibles en esa ranura -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICACIÓN -->
+    <div id="toast">Acción completada</div>
+
+    <!-- BARRA DE NAVEGACIÓN INFERIOR (5 SECCIONES) -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="navigate('home')">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span>Inicio</span>
+        </div>
+        <div class="nav-item" onclick="navigate('weapons')">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+            <span>Armas</span>
+        </div>
+        <div class="nav-item" onclick="navigate('meta')">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span>Clases META</span>
+        </div>
+        <div class="nav-item" onclick="navigate('favorites')">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <span>Favoritos</span>
+        </div>
+        <div class="nav-item" onclick="navigate('gunsmith')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Mi Armero</span>
+        </div>
+    </nav>
+
+    <!-- ARCHIVOS JS DE LA APLICACIÓN -->
+    <script src="js/weapons-data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

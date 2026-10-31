@@ -1,0 +1,11 @@
+{
+  "appId": "com.codm.meta.loadouts",
+  "appName": "CODM META Armero",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}
