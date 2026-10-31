@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CODM META Armero</string>
+    <string name="title_activity_main">CODM META Armero</string>
+    <string name="package_name">com.codm.meta.loadouts</string>
+    <string name="custom_url_scheme">com.codm.meta.loadouts</string>
+</resources>

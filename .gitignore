@@ -27,3 +27,10 @@ android-app/debs/
 /android-app/payload
 android-app/app/src/main/jniLibs/
 *.wgt
+
+# CODM App
+/codm-app/node_modules/
+codm-app/android/.gradle/
+codm-app/android/build/
+codm-app/android/app/build/
+codm-app/android/local.properties
